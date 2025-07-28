@@ -292,6 +292,7 @@ class Conversation(containers.Vertical):
         Binding("alt+down", "cursor_down", "Block down"),
         Binding("enter", "select_block", "Select"),
         Binding("escape", "dismiss", "Dismiss", show=False),
+        Binding("f1", "settings", "Settings"),
     ]
 
     busy_count = var(0)
@@ -495,6 +496,12 @@ class Conversation(containers.Vertical):
         if (block := self.cursor_block) is not None and block.source:
             assert isinstance(block, MarkdownFence)
             self.execute(block._content.plain, block.lexer)
+
+    @work
+    async def action_settings(self) -> None:
+        from toad.screens.settings import SettingsScreen
+
+        await self.app.push_screen_wait(SettingsScreen())
 
     @work
     async def execute(self, code: str, language: str) -> None:

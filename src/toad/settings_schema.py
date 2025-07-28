@@ -4,6 +4,7 @@ SCHEMA: list[SchemaDict] = [
     {
         "key": "ui",
         "title": "User interface settings",
+        "help": "The following settings allow you to customize the look and feel of the User Interface.",
         "type": "object",
         "fields": [
             {
@@ -72,18 +73,39 @@ SCHEMA: list[SchemaDict] = [
     {
         "key": "accounts",
         "title": "User accounts",
-        "help": "Account information used by AI services.",
-        "type": "list",
-        "default": [
-            {"key": "anthropic", "apikey": "$ANTHROPIC_API_KEY"},
-            {"key": "openai", "apikey": "$OPENAI_API_KEY"},
-        ],
+        "help": "Account details here",
+        "type": "object",
         "fields": [
             {
-                "type": "string",
-                "key": "apikey",
-                "title": "API Key",
-            }
+                "key": "anthropic",
+                "type": "object",
+                "title": "Anthropic account",
+                "help": "Instructions how to get an API Key",
+                "fields": [
+                    {
+                        "key": "apikey",
+                        "help": "Your API Key goes here",
+                        "title": "API Key",
+                        "type": "string",
+                        "default": "$ANTHROPIC_API_KEY",
+                    }
+                ],
+            },
+            {
+                "key": "openai",
+                "type": "object",
+                "title": "OpenAI account",
+                "help": "Instructions how to get an OpenAPI API key",
+                "fields": [
+                    {
+                        "key": "apikey",
+                        "help": "Your API key goes here",
+                        "title": "API Key",
+                        "type": "string",
+                        "default": "$OPENAI_API_KEY",
+                    }
+                ],
+            },
         ],
     },
 ]

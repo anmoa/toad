@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from functools import cached_property
+
 from dataclasses import dataclass
 from typing import Iterable, Sequence, TypedDict, Required
 
@@ -14,8 +16,9 @@ class Setting:
     title: str
     type: str = "object"
     help: str = ""
+    default: object | None = None
     validate: list[dict] | None = None
-    children: list[Setting] | None = None
+    children: dict[str, Setting] | None = None
 
 
 class SchemaDict(TypedDict, total=False):
@@ -101,7 +104,7 @@ class Schema:
             if key not in settings:
                 settings = settings[key] = {}
 
-    def build_default(self) -> dict[str, object]:
+    def defaults(self) -> dict[str, object]:
         settings: dict[str, object] = {}
 
         def set_defaults(schema: list[SchemaDict], settings: dict[str, object]) -> None:
@@ -110,84 +113,68 @@ class Schema:
                 key = sub_schema["key"]
                 assert isinstance(sub_schema, dict)
                 type = sub_schema["type"]
-                if type in INPUT_TYPES:
-                    if (default := sub_schema.get("default")) is not None:
-                        settings[key] = default
 
-                elif type == "object":
+                if type == "object":
                     if fields := sub_schema.get("fields"):
                         sub_settings = settings[key] = {}
                         set_defaults(fields, sub_settings)
 
-                elif type == "list":
-                    data_settings = settings[key] = {}
-                    item_fields = sub_schema.get("fields")
-                    assert item_fields is not None
-
-                    if defaults := sub_schema.get("default"):
-                        assert isinstance(defaults, list)
-                        for default in defaults:
-                            default = default.copy()
-                            item_key = default.pop("key")
-                            sub_settings = data_settings[item_key] = default
-                            set_defaults(item_fields, sub_settings)
+                else:
+                    if (default := sub_schema.get("default")) is not None:
+                        settings[key] = default
 
         set_defaults(self.schema, settings)
         return settings
 
-    def get_form_settings(self, settings: dict[str, object]) -> Sequence[Setting]:
-        form_settings: list[Setting] = []
+    @cached_property
+    def keys(self) -> Sequence[str]:
+        def get_keys(setting: Setting) -> Iterable[str]:
+            if setting.type == "object" and setting.children:
+                for child in setting.children.values():
+                    yield from get_keys(child)
+            else:
+                yield setting.key
 
-        def iter_settings(name: str, schema: SchemaDict) -> Iterable[Setting]:
+        keys = [
+            key for setting in self.settings_map.values() for key in get_keys(setting)
+        ]
+        return keys
+
+    @cached_property
+    def settings_map(self) -> dict[str, Setting]:
+        form_settings: dict[str, Setting] = {}
+
+        def build_settings(
+            name: str, schema: SchemaDict, default: object = None
+        ) -> Setting:
             schema_type = schema.get("type")
             assert schema_type is not None
-            if schema_type in INPUT_TYPES:
-                yield Setting(
+            if schema_type == "object":
+                return Setting(
                     name,
                     schema["title"],
                     schema_type,
+                    help=schema.get("help") or "",
+                    default=schema.get("default", default),
+                    validate=schema.get("validate"),
+                    children={
+                        schema["key"]: build_settings(f"{name}.{schema['key']}", schema)
+                        for schema in schema.get("fields", [])
+                    },
+                )
+            else:
+                return Setting(
+                    name,
+                    schema["title"],
+                    schema_type,
+                    help=schema.get("help") or "",
+                    default=schema.get("default", default),
                     validate=schema.get("validate"),
                 )
 
-            elif schema_type == "object":
-                yield Setting(
-                    name,
-                    schema["title"],
-                    schema_type,
-                    validate=schema.get("validate"),
-                    children=[
-                        setting
-                        for schema in schema.get("fields", {})
-                        for setting in iter_settings(f"{name}.{schema['key']}", schema)
-                    ],
-                )
-
-            elif schema_type == "list":
-                yield Setting(
-                    name,
-                    schema["title"],
-                    schema_type,
-                    children=[
-                        Setting(
-                            f"{name}.{sub_name}",
-                            "",
-                            validate=schema.get("validate"),
-                            children=[
-                                setting
-                                for child_schema in schema.get("fields", {})
-                                for setting in iter_settings(
-                                    f"{name}.{sub_name}.{child_schema['key']}",
-                                    child_schema,
-                                )
-                            ],
-                        )
-                        for sub_name in get_setting(settings, name, dict)
-                    ],
-                )
-
-        for schema in self.schema:
-            form_settings.extend(
-                iter_settings(schema["key"], schema),
+        for sub_schema in self.schema:
+            form_settings[sub_schema["key"]] = build_settings(
+                sub_schema["key"], sub_schema
             )
         return form_settings
 
@@ -219,7 +206,9 @@ if __name__ == "__main__":
     install(show_locals=True, width=None)
 
     schema = Schema(SCHEMA)
-    settings = schema.build_default()
+    settings = schema.defaults
     print(settings)
 
-    print(schema.get_form_settings(settings))
+    print(schema.settings_map)
+
+    print(schema.keys)

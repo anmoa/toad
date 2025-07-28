@@ -57,6 +57,49 @@ Conversation {
     }
 }
 
+SettingsScreen {
+    
+    overflow: hidden;
+    background: $background;
+
+    SettingsInput {
+        margin: 1 0 0 0;        
+    }
+
+    Checkbox {
+        margin-top: 1;
+    }
+    
+    .container {
+        margin: 1;    
+        border: wide $secondary-muted;   
+        padding: 0 0 1 0;         
+        &:focus-within {
+            border: wide $secondary;                           
+        }
+        &:last-child {
+            margin: 1 1 0 1;
+        }
+    }
+
+    & > .container {
+        margin: 0 1;
+    }
+
+    Label.title {
+        margin-top: 1;
+        
+        padding: 0 0 0 1;
+        text-style: bold;
+    }
+    Label.help {
+        color: $text-muted;        
+        padding: 0 0 0 1;
+    }
+   
+
+}
+
 
 Welcome {
     # height: 100%;

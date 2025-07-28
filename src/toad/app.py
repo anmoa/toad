@@ -10,7 +10,7 @@ from textual.screen import Screen
 
 from toad.settings import Schema, Settings
 from toad.settings_schema import SCHEMA
-from toad.main_screen import MainScreen
+from toad.screens.main import MainScreen
 
 
 class ToadApp(App):
@@ -43,7 +43,7 @@ class ToadApp(App):
         if settings_path.exists():
             settings = json.loads(settings_path.read_text("utf-8"))
         else:
-            settings = self.settings_schema.build_default()
+            settings = self.settings_schema.defaults
             settings_path.write_text(json.dumps(settings), "utf-8")
             self.notify(f"Wrote default settings to {settings_path}")
         self._settings = settings
