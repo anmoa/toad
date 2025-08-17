@@ -396,7 +396,7 @@ class Conversation(containers.Vertical):
 
     def compose(self) -> ComposeResult:
         yield Throbber(id="throbber")
-        yield AutoCompleteOptions()
+
         with Window():
             with ContentsGrid():
                 with containers.VerticalGroup(id="cursor-container"):
@@ -452,12 +452,15 @@ class Conversation(containers.Vertical):
 
     @on(messages.UserInputSubmitted)
     async def on_user_input_submitted(self, event: messages.UserInputSubmitted) -> None:
-        from toad.widgets.agent_response import AgentResponse
+        if event.shell:
+            await self.post_shell(event.body)
+        else:
+            from toad.widgets.agent_response import AgentResponse
 
-        await self.post(UserInput(event.body))
-        agent_response = AgentResponse(self.conversation)
-        await self.post(agent_response)
-        agent_response.send_prompt(event.body)
+            await self.post(UserInput(event.body))
+            agent_response = AgentResponse(self.conversation)
+            await self.post(agent_response)
+            agent_response.send_prompt(event.body)
 
     @on(Menu.OptionSelected)
     async def on_menu_option_selected(self, event: Menu.OptionSelected) -> None:
@@ -493,18 +496,9 @@ class Conversation(containers.Vertical):
 
     async def on_mount(self) -> None:
         self.prompt.slash_commands = [
+            SlashCommand("/about", "About Toad"),
+            SlashCommand("/help", "Open Help"),
             SlashCommand("/set", "Change a setting"),
-            SlashCommand("/get", "Get a setting"),
-            SlashCommand("/quit", "Quit Toad"),
-            SlashCommand("/help", "Get help"),
-            SlashCommand("/set2", "Change a setting"),
-            SlashCommand("/get2", "Get a setting"),
-            SlashCommand("/quit2", "Quit Toad"),
-            SlashCommand("/help2", "Get help"),
-            SlashCommand("/set3", "Change a setting"),
-            SlashCommand("/get3", "Get a setting"),
-            SlashCommand("/quit3", "Quit Toad"),
-            SlashCommand("/help3", "Get help"),
         ]
         self.call_after_refresh(self.post_welcome)
         self.app.settings_changed_signal.subscribe(self, self._settings_changed)
@@ -515,6 +509,7 @@ class Conversation(containers.Vertical):
             self.conversation = llm.get_model(value).conversation()
 
     async def post_welcome(self) -> None:
+        return
         from toad.widgets.welcome import Welcome
 
         await self.post(Welcome(classes="note", name="welcome"), anchor=False)
@@ -543,7 +538,7 @@ class Conversation(containers.Vertical):
         contents = self.contents
         if widget is None:
             return
-        if widget in self.children:
+        if widget in contents.children:
             self.cursor_offset = contents.children.index(widget)
             self.refresh_block_cursor()
             return
@@ -561,11 +556,22 @@ class Conversation(containers.Vertical):
         self.call_after_refresh(self.refresh_block_cursor)
         event.stop()
 
-    async def post(self, widget: Widget, anchor: bool = True) -> None:
+    async def post[WidgetType, bound = Widget](
+        self, widget: WidgetType, anchor: bool = True
+    ) -> WidgetType:
         self._blocks = None
         await self.contents.mount(widget)
         if anchor:
             self.window.anchor()
+        return widget
+
+    async def post_shell(self, command: str) -> None:
+        from toad.widgets.shell_result import ShellResult
+        from toad.widgets.ansi_log import ANSILog
+
+        shell_result = await self.post(ShellResult(command))
+        ansi_log = await self.post(ANSILog())
+        self.call_after_refresh(shell_result.run_shell, ansi_log)
 
     def action_cursor_up(self) -> None:
         if not self.contents.children or self.cursor_offset == 0:

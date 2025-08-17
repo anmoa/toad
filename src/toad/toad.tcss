@@ -12,6 +12,19 @@ Throbber {
 
 
 Conversation {
+
+    &.-scrollbar-thin {
+        Window {
+            scrollbar-size-vertical: 1;
+        }
+        
+    }
+    &.-scrollbar-hidden {
+        Window {
+            scrollbar-size-vertical: 0;
+        }
+    }
+
     height: 1fr;    
     background: black 10%;
     layers: base prompt float;        
@@ -28,14 +41,15 @@ Conversation {
         layout: stream;
         width: 1fr;
         overflow: hidden; 
-        height: auto;
+        height: auto;        
     }
     
     Contents > * {          
         & > MarkdownBlock:last-child {            
             margin-bottom: 0;     
-        }        
+        }          
     }
+    
 
     ContentsGrid {
         grid-size: 2;
@@ -65,8 +79,50 @@ Conversation {
     }
         
     AgentResponse {
-       padding: 0 2 0 1;       
+       padding: 0 1 0 1;       
     }
+
+    ShellResult {        
+        border-left: vkey $primary;
+        background: $foreground 4%;
+        padding: 1 0;   
+        margin: 1 0; 
+        #prompt {
+            margin: 0 1 0 0;
+            color: $text-primary;
+        }    
+    }
+    
+    ANSILog {
+        width: 1fr;
+        height: auto;
+        padding: 0 1;
+        margin: 1 0;
+        overflow: scroll;
+        scrollbar-size: 0 0;        
+    }
+
+    UserInput {
+        border-left: vkey $secondary;
+        background: $foreground 4%;
+        padding: 1 0;   
+        margin: 1 0; 
+        Markdown {
+            padding:0 2 0 0;
+        }
+        Markdown > MarkdownBlock:last-child {
+            margin-bottom: 0;
+        }
+        MarkdownFence {
+            # width: auto;                        
+            margin: 0 2 1 0;
+        }
+        #prompt {
+            margin: 0 1 0 0;
+            color: $text-secondary;
+        }
+    }
+
 }
 
 SettingsScreen {
@@ -254,15 +310,6 @@ AutoCompleteOptions {
 
 
 
-UserInput {
-    border-left: vkey $primary;
-    background: $foreground 4%;
-    padding: 1 2;   
-    margin: 1 0; 
-    & > MarkdownBlock:last-child {
-        margin-bottom: 0;
-    }
-}
 
 AgentResponse {    
     # margin: 0;

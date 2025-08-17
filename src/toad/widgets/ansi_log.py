@@ -203,6 +203,8 @@ class ANSILog(ScrollView, can_focus=True):
                 self.cursor_line = max(0, absolute_y)
 
     def _fold_line(self, line_no: int, line: Content, width: int) -> list[LineFold]:
+        if not width:
+            return [LineFold(0, 0, 0, line)]
         line_length = line.cell_length
         divide_offsets = list(range(width, line_length, width))
         folded_line = line.divide(divide_offsets)
@@ -246,6 +248,17 @@ class ANSILog(ScrollView, can_focus=True):
 
     def update_line(self, line_index: int, line: Content) -> None:
         line.simplify()
+        while line_index >= len(self._lines):
+            empty_line = Content()
+            self._lines.append(
+                LineRecord(
+                    empty_line,
+                    folds=self._fold_line(
+                        len(self._lines) + 1, empty_line, self._width
+                    ),
+                )
+            )
+
         line_record = self._lines[line_index]
         line_record.content = line
         line_record.folds[:] = self._fold_line(line_index, line, self._width)

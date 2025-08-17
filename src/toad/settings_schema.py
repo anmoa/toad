@@ -44,6 +44,13 @@ SCHEMA: list[SchemaDict] = [
                 "validate": [{"type": "minimum", "value": 40}],
             },
             {
+                "key": "scrollbar",
+                "title": "Scrollbar size",
+                "type": "choices",
+                "default": "normal",
+                "choices": ["normal", "thin", "hidden"],
+            },
+            {
                 "key": "theme",
                 "title": "Theme",
                 "help": "One of the builtin Textual themes.",

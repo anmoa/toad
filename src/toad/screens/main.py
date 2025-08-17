@@ -6,6 +6,7 @@ from textual import getters
 from textual.widgets import Footer
 from textual import containers
 
+from toad.widgets.prompt import AutoCompleteOptions
 from toad.widgets.throbber import Throbber
 from toad.widgets.conversation import Conversation
 from toad.widgets.explain import Explain
@@ -22,9 +23,11 @@ class MainScreen(Screen, can_focus=False):
 
     column = reactive(False)
     column_width = reactive(100)
+    scrollbar = reactive("")
 
     def compose(self) -> ComposeResult:
         yield Version("Toad v0.1")
+        yield AutoCompleteOptions()
         with containers.Center():
             yield Explain()
             yield Conversation()
@@ -43,3 +46,8 @@ class MainScreen(Screen, can_focus=False):
         self.conversation.styles.max_width = (
             max(10, column_width) if self.column else None
         )
+
+    def watch_scrollbar(self, old_scrollbar: str, scrollbar: str) -> None:
+        if old_scrollbar:
+            self.conversation.remove_class(f"-scrollbar-{old_scrollbar}")
+        self.conversation.add_class(f"-scrollbar-{scrollbar}")

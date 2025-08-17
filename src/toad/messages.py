@@ -14,3 +14,4 @@ class WorkFinished(Message):
 @dataclass
 class UserInputSubmitted(Message):
     body: str
+    shell: bool = False

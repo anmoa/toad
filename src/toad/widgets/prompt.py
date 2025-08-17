@@ -38,6 +38,7 @@ class PromptTextArea(HighlightedTextArea):
 
     auto_completes: var[list[Option]] = var(list)
     multi_line = var(False, bindings=True)
+    shell_mode = var(False)
 
     class Submitted(Message):
         def __init__(self, markdown: str) -> None:
@@ -60,14 +61,14 @@ class PromptTextArea(HighlightedTextArea):
         return True
 
     def action_multiline_submit(self) -> None:
-        self.post_message(UserInputSubmitted(self.text))
+        self.post_message(UserInputSubmitted(self.text, self.shell_mode))
         self.clear()
 
     def action_newline(self) -> None:
         self.insert("\n")
 
     def action_submit(self) -> None:
-        self.post_message(UserInputSubmitted(self.text))
+        self.post_message(UserInputSubmitted(self.text, self.shell_mode))
         self.clear()
 
     def action_cursor_up(self, select: bool = False):
@@ -162,7 +163,16 @@ class Prompt(containers.VerticalGroup):
         text = self.prompt_text_area.text
         if "\n" in text or " " in text:
             return False
-        if text.split(" ", 1)[0] in ("ls", "cat", "cd", "mv", "cp"):
+        if text.split(" ", 1)[0] in (
+            "python",
+            "ls",
+            "cat",
+            "cd",
+            "mv",
+            "cp",
+            "tree",
+            "rm",
+        ):
             return True
         return False
 
@@ -308,7 +318,9 @@ class Prompt(containers.VerticalGroup):
     def compose(self) -> ComposeResult:
         with containers.HorizontalGroup(id="prompt-container"):
             yield Label(self.PROMPT_AI, id="prompt")
-            yield PromptTextArea().data_bind(Prompt.auto_completes, Prompt.multi_line)
+            yield PromptTextArea().data_bind(
+                Prompt.auto_completes, Prompt.multi_line, Prompt.shell_mode
+            )
         with containers.HorizontalGroup(id="info-container"):
             yield CondensedPath()
 

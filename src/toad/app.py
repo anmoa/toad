@@ -24,6 +24,7 @@ class ToadApp(App):
     _settings = var(dict)
     column: reactive[bool] = reactive(False)
     column_width: reactive[int] = reactive(100)
+    scrollbar: reactive[str] = reactive("normal")
 
     def __init__(self) -> None:
         self.settings_changed_signal = Signal(self, "settings_changed")
@@ -75,6 +76,9 @@ class ToadApp(App):
         elif key == "ui.theme":
             if isinstance(value, str):
                 self.theme = value
+        elif key == "ui.scrollbar":
+            if isinstance(value, str):
+                self.scrollbar = value
 
         self.settings_changed_signal.publish((key, value))
 
@@ -93,5 +97,7 @@ class ToadApp(App):
 
     def get_default_screen(self) -> Screen:
         return MainScreen().data_bind(
-            column=ToadApp.column, column_width=ToadApp.column_width
+            column=ToadApp.column,
+            column_width=ToadApp.column_width,
+            scrollbar=ToadApp.scrollbar,
         )
