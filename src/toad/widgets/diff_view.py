@@ -7,7 +7,7 @@ from rich.segment import Segment
 from rich.style import Style as RichStyle
 
 from textual.app import ComposeResult
-from textual.content import Content
+from textual.content import Content, Span
 from textual.geometry import Size
 from textual import highlight
 from textual import events
@@ -259,7 +259,12 @@ class DiffView(containers.VerticalGroup):
         "-": "$foreground 80% on $error 30%",
         " ": "$foreground 40%",
     }
-    LINE_STYLES = {"+": "on $success 15%", "-": "on $error 15%", " ": "", "/": ""}
+    LINE_STYLES = {
+        "+": "on $success 10%",
+        "-": "on $error 10%",
+        " ": "",
+        "/": "",
+    }
 
     def __init__(
         self,
@@ -286,9 +291,11 @@ class DiffView(containers.VerticalGroup):
         if self._grouped_opcodes is None:
             text_lines_a = self.code_before.splitlines()
             text_lines_b = self.code_after.splitlines()
-            sequence_matcher = difflib.SequenceMatcher(None, text_lines_a, text_lines_b)
+            sequence_matcher = difflib.SequenceMatcher(
+                None, text_lines_a, text_lines_b, autojunk=False
+            )
             self._grouped_opcodes = list(sequence_matcher.get_grouped_opcodes())
-            sequence_matcher.get_opcodes()
+
         return self._grouped_opcodes
 
     @property
@@ -305,6 +312,25 @@ class DiffView(containers.VerticalGroup):
             code_b = highlight.highlight(
                 "\n".join(text_lines_b), language=language2, path=self.path2
             )
+
+            sequence_matcher = difflib.SequenceMatcher(
+                None, self.code_before, self.code_after, autojunk=False
+            )
+            code_a_spans: list[Span] = []
+            code_b_spans: list[Span] = []
+            for tag, i1, i2, j1, j2 in sequence_matcher.get_opcodes():
+                if (
+                    tag in {"delete", "replace"}
+                    and "\n" not in code_a.plain[i1 : i2 + 1]
+                ):
+                    code_a_spans.append(Span(i1, i2, "on $error 40%"))
+
+                if tag in ("insert") and "\n" not in code_a.plain[j1 : j2 + 1]:
+                    code_b_spans.append(Span(j1, j2, "on $success 40%"))
+
+            code_a = code_a.add_spans(code_a_spans)
+            code_b = code_b.add_spans(code_b_spans)
+
             lines_a = code_a.split("\n")
             lines_b = code_b.split("\n")
             self._highlighted_code_lines = (lines_a, lines_b)
@@ -578,7 +604,7 @@ def loop_first(values: Iterable[T]) -> Iterable[tuple[bool, T]]:
         yield False, value
 
 
-def loop_first_last(values: Iterable[T]) -> Iterable[tuple[bool, bool, T]]:
+def loop_first_last(values: Iterable[T]) -> Iterable[tuple[bool, T]]:
     """Iterate and generate a tuple with a flag for first and last value."""
     iter_values = iter(values)
     try:
@@ -614,7 +640,7 @@ def loop_first(values: Iterable[T]) -> Iterable[tuple[bool, T]]:
         yield False, value
 
 
-def loop_last(values: Iterable[T]) -> Iterable[tuple[bool, T]]:
+def loop_last(values: Iterable[T]) -> Iterable[tuple[bool, bool, T]]:
     """Iterate and generate a tuple with a flag for last value."""
     iter_values = iter(values)
     try:
@@ -631,7 +657,7 @@ def loop_first_last(values: Iterable[ValueType]) -> Iterable[tuple[bool, bool, V
     """Iterate and generate a tuple with a flag for first and last value."""
     iter_values = iter(values)
     try:
-        previous_value = next(iter_values)
+        previous_value = next(iter_values)  # Get previous value
     except StopIteration:
         return
     first = True
