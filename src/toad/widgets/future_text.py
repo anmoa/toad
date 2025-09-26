@@ -63,11 +63,7 @@ class FutureText(Static):
 
         bar_character = self.BARS[7 - cursor_progress]
 
-        WAVE = "◐◓◑◒"
-
         text = Content.assemble(
-            # WAVE[int((speed_time / 2) % len(WAVE))],
-            # " ",
             text,
             (bar_character, "reverse $text-error"),
             (bar_character, "$text-error"),
