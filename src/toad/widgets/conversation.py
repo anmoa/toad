@@ -15,6 +15,7 @@ from textual.app import ComposeResult
 from textual import containers
 from textual import getters
 from textual import events
+from textual.actions import SkipAction
 from textual.binding import Binding
 from textual.content import Content
 from textual.css.query import NoMatches
@@ -520,6 +521,7 @@ class Conversation(containers.Vertical):
             await self.shell.interrupt()
             self._shell = None
             self.flash("Command interrupted", style="success")
+        raise SkipAction()
 
     @work
     @on(acp_messages.CreateTerminal)
