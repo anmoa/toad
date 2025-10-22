@@ -25,7 +25,7 @@ class FutureText(Static):
         }
     }
     """
-
+    ALLOW_SELECT = False
     COMPONENT_CLASSES = {"future-text--cursor"}
 
     BARS: ClassVar[list[str]] = ["▉", "▊", "▋", "▌", "▍", "▎", "▏", " "]

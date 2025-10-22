@@ -875,7 +875,6 @@ class Conversation(containers.Vertical):
 
     @property
     def shell(self) -> Shell:
-        assert isinstance(self.app, ToadApp)
         system = platform.system()
         if system == "Darwin":
             shell_command = self.app.settings.get("shell.macos.run", str, expand=False)
