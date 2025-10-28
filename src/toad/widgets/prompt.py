@@ -252,6 +252,8 @@ class PromptTextArea(HighlightedTextArea):
         pre_complete = self.text[:cursor_column]
         post_complete = self.text[cursor_column:]
         shlex_tokens = shlex.split(pre_complete)
+        if not shlex_tokens:
+            return
 
         command = shlex_tokens[0]
 
