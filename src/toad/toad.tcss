@@ -104,7 +104,7 @@ Conversation {
 
     &.-column {
         max-width: 100;             
-        background: black 10%;                
+        background: black 7%;                
     }
     
     Contents {        
