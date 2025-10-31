@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from textual.app import ComposeResult
 from textual.content import Content
+from textual.layout import Layout
 from textual.reactive import reactive
 from textual import containers
 from textual.widgets import Static
@@ -26,7 +27,7 @@ class Plan(containers.Grid):
         border: tall transparent;
         
         grid-size: 2;
-        grid-columns: auto auto 1fr;
+        grid-columns: auto 1fr;
         grid-rows: auto;
         height: auto;        
     
@@ -80,6 +81,12 @@ class Plan(containers.Grid):
         super().__init__(name=name, id=id, classes=classes)
         self.set_reactive(Plan.entries, entries)
 
+    def pre_layout(self, layout: Layout) -> None:
+        from textual.layouts.grid import GridLayout
+
+        assert isinstance(layout, GridLayout)
+        # layout.shrink = True
+
     def watch_entries(self, old_entries: list[Entry], new_entries: list[Entry]) -> None:
         entry_map = {entry.content: entry for entry in old_entries}
         newly_completed: set[Plan.Entry] = set()
@@ -95,6 +102,7 @@ class Plan(containers.Grid):
 
     def compose(self) -> ComposeResult:
         if not self.entries:
+            yield Static("No plan yet", classes="-no-plan")
             return
         for entry in self.entries:
             classes = f"priority-{entry.priority} status-{entry.status}"
