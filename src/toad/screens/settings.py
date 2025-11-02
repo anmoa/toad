@@ -75,10 +75,10 @@ class SettingsScreen(ModalScreen):
                                 choices = setting.choices or []
                                 for choice in choices:
                                     if isinstance(choice, tuple):
-                                        title, value = choice
+                                        title, choice_value = choice
                                     else:
-                                        title = value = choice
-                                    if default == value:
+                                        title = choice_value = choice
+                                    if default == choice_value:
                                         default = title
                                 else:
                                     help = Content()
@@ -164,7 +164,6 @@ class SettingsScreen(ModalScreen):
                                     for choice in choices
                                 ]
                                 choices_set = {choice[1] for choice in select_choices}
-
                                 yield Select(
                                     select_choices,
                                     value=(
