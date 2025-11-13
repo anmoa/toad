@@ -536,6 +536,16 @@ class ANSIClear(NamedTuple):
     clear: ClearType
 
 
+@rich.repr.auto
+class ANSICursorShow(NamedTuple):
+    show: bool
+
+
+@rich.repr.auto
+class ANSIAlternateBuffer(NamedTuple):
+    enable: bool
+
+
 # Not technically part of the terminal protocol
 @rich.repr.auto
 class ANSIWorkingDirectory(NamedTuple):
@@ -544,7 +554,9 @@ class ANSIWorkingDirectory(NamedTuple):
     path: str
 
 
-type ANSICommand = ANSICursor | ANSIClear | ANSIWorkingDirectory
+type ANSICommand = (
+    ANSICursor | ANSIClear | ANSICursorShow | ANSIAlternateBuffer | ANSIWorkingDirectory
+)
 
 
 class ANSIStream:
@@ -612,6 +624,10 @@ class ANSIStream:
     CLEAR_SCREEN_CURSOR_TO_BEGINNING = ANSIClear("cursor_to_beginning")
     CLEAR_SCREEN = ANSIClear("screen")
     CLEAR_SCREEN_SCROLLBACK = ANSIClear("scrollback")
+    SHOW_CURSOR = ANSICursorShow(True)
+    HIDE_CURSOR = ANSICursorShow(False)
+    ENABLE_ALTERNATE_BUFFER = ANSIAlternateBuffer(True)
+    DISABLE_ALTERNATE_BUFFER = ANSIAlternateBuffer(False)
 
     @classmethod
     @lru_cache(maxsize=1024)
@@ -624,6 +640,7 @@ class ANSIStream:
         Returns:
             Ansi segment, or `None` if one couldn't be decoded.
         """
+        print(repr(csi))
         if match := re.fullmatch(r"\x1b\[(\d+)?(?:;)?(\d*)?(\w)", csi):
             match match.groups(default=""):
                 case [lines, "", "A"]:
@@ -661,6 +678,18 @@ class ANSIStream:
                     return cls.CLEAR_LINE
                 case _:
                     print("!!", repr(csi), repr(match.groups()))
+        elif match := re.fullmatch(r"\x1b\[([0-9:;<=>?]*)([!-/]*)([@-~])", csi):
+            print(repr(match.groups(default="")))
+            match match.groups(default=""):
+                case ["?25", "", "h" | "l" as show]:
+                    return cls.SHOW_CURSOR if show == "h" else cls.HIDE_CURSOR
+                case ["?1049", "", "h" | "l" as enable]:
+                    return (
+                        cls.ENABLE_ALTERNATE_BUFFER
+                        if enable
+                        else cls.DISABLE_ALTERNATE_BUFFER
+                    )
+
         return None
 
     def on_token(self, token: ANSIToken) -> Iterable[ANSICommand]:

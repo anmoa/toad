@@ -60,6 +60,10 @@ After configuring the agent, open the ACP panel in Zed (cmd-?/ctrl-?) to start c
 **Repository**: https://github.com/tao12345666333/amp-acp
 '''
 
+[actions."*".install]
+command = "curl -fsSL https://ampcode.com/install.sh | bash"
+description = "Install AMP code"
+
 [actions."*".install_adapter]
 command = "npm install -g amp-acp"
-description = "Install the Amp ACP adapter globally so it is available without npx"
+description = "Install the Amp ACP adapter"

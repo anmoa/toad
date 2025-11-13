@@ -137,7 +137,7 @@ if __name__ == "__main__":
             command_pane = self.query_one(CommandPane)
             self.call_after_refresh(
                 command_pane.execute,
-                "uv run python scroll_test.py",
+                "uv run python test_cursor_toggle.py",
             )
 
     app = CommandApp()
