@@ -352,17 +352,19 @@ class StoreScreen(Screen):
     def on_key(self, event: events.Key) -> None:
         if event.character is None:
             return
-        if event.character in "123456789abcdef":
-            launch_item_offset = "123456789abcdef".find(event.character)
+        LAUNCHER_KEYS = "123456789abcdef"
+        if event.character in LAUNCHER_KEYS:
+            launch_item_offset = LAUNCHER_KEYS.find(event.character)
             self.launcher.focus()
             try:
                 self.launcher.grid_select.children[launch_item_offset]
             except IndexError:
                 self.notify(
-                    f"No agent on key [b]{launch_item_offset}",
+                    f"No agent on key [b]{LAUNCHER_KEYS[launch_item_offset]}",
                     title="Quick launch",
                     severity="error",
                 )
+                self.app.bell()
                 return
             self.launcher.highlighted = launch_item_offset
 
