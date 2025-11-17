@@ -174,6 +174,10 @@ class AgentGridSelect(GridSelect):
 class Container(containers.VerticalScroll):
     BINDING_GROUP_TITLE = "View"
 
+    def allow_focus(self) -> bool:
+        """Only allow focus when we can scroll."""
+        return super().allow_focus() and self.show_vertical_scrollbar
+
 
 class StoreScreen(Screen):
     BINDING_GROUP_TITLE = "Screen"
@@ -261,6 +265,7 @@ class StoreScreen(Screen):
 
     def compose_agents(self) -> ComposeResult:
         agents = self._agents
+
         yield Launcher(agents, id="launcher")
 
         ordered_agents = sorted(
