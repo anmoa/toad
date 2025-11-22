@@ -165,10 +165,48 @@ class DECInvokePattern(Pattern):
         return self.INVOKE[initial_character]
 
 
+CONTROL_CODES = {
+    "D": "ind",
+    "E": "nel",
+    "H": "hts",
+    "I": "htj",
+    "J": "vts",
+    "K": "pld",
+    "L": "plu",
+    "M": "ri",
+    "N": "ss2",
+    "O": "ss3",
+    "P": "dcs",
+    "Q": "pu1",
+    "R": "pu2",
+    "S": "sts",
+    "T": "cch",
+    "U": "mw",
+    "V": "spa",
+    "W": "epa",
+    "X": "sos",
+    "Z": "decid",
+    "[": "csi",
+    "\\": "st",
+    "]": "osc",
+    "^": "pm",
+    "_": "apc",
+    "c": "ris",
+    "7": "decsc",
+    "8": "decrc",
+    "=": "deckpam",
+    ">": "deckpnm",
+    "#": "decaln",
+    "(": "scs_g0",
+    ")": "scs_g1",
+    "*": "scs_g2",
+    "+": "scs_g3",
+}
+
+
 class FEPattern(Pattern):
     FINAL = character_range(0x30, 0x7E)
     INTERMEDIATE = character_range(0x20, 0x2F)
-
     CSI_TERMINATORS = character_range(0x40, 0x7E)
     OSC_TERMINATORS = frozenset({"\x1b", "\x07", "\x9c"})
     DSC_TERMINATORS = frozenset({"\x9c"})
@@ -230,8 +268,7 @@ class FEPattern(Pattern):
                 store((yield))
                 return ("sp", sequence.getvalue())
             case _:
-                return ("?", sequence.getvalue())
-                return False
+                return ("control", character)
 
 
 SGR_STYLE_MAP: Mapping[int, Style] = {
@@ -646,6 +683,8 @@ class ANSICursor(NamedTuple):
     """Should replace be relative (`False`) or absolute (`True`)"""
     update_background: bool = False
     """Optional style for remaining line."""
+    auto_scroll: bool = False
+    """Perform a scroll with the movement?"""
 
     def __rich_repr__(self) -> rich.repr.Result:
         yield "delta_x", self.delta_x, None
@@ -655,6 +694,7 @@ class ANSICursor(NamedTuple):
         yield "text", self.text, None
         yield "replace", self.replace, None
         yield "update_background", self.update_background, False
+        yield "auto_scroll", self.auto_scroll, False
 
     def get_replace_offsets(
         self, cursor_offset: int, line_length: int
@@ -703,8 +743,8 @@ class ANSIClear(NamedTuple):
 
 @rich.repr.auto
 class ANSIScrollMargin(NamedTuple):
-    top: int = 0
-    bottom: int = 0
+    top: int | None = None
+    bottom: int | None = None
 
     def __rich_repr__(self) -> rich.repr.Result:
         yield self.top
@@ -899,7 +939,7 @@ class ANSIStream:
         Returns:
             Ansi segment, or `None` if one couldn't be decoded.
         """
-        print(repr(csi))
+
         if match := re.fullmatch(r"\x1b\[(\d+)?(?:;)?(\d*)?(\w)", csi):
             match match.groups(default=""):
                 case [lines, _, "A"]:
@@ -954,7 +994,10 @@ class ANSIStream:
                 case ["2", _, "K"]:
                     return cls.CLEAR_LINE
                 case [top, bottom, "r"]:
-                    return ANSIScrollMargin(int(top or 1), int(bottom or 1))
+                    return ANSIScrollMargin(
+                        int(top or "1") - 1,
+                        int(bottom or "1") - 1,
+                    )
                 case ["4", _, "h" | "l" as replace_mode]:
                     return (
                         cls.ENABLE_REPLACE_MODE
@@ -1058,7 +1101,6 @@ class ANSIStream:
                     yield ANSIStyle(self.style)
                 else:
                     if (ansi_segment := self._parse_csi(csi)) is not None:
-                        print(repr(ansi_segment))
                         yield ansi_segment
 
             case ["dec", dec]:
@@ -1067,6 +1109,16 @@ class ANSIStream:
 
             case ["dev_invoke", dec_invoke]:
                 yield ANSICharacterSet(dec_invoke=self.DEC_INVOKE_MAP[dec_invoke[0]])
+
+            case ["control", code]:
+                if (control := CONTROL_CODES.get(code)) is not None:
+                    if control == "ri":  # control code
+                        print("RI")
+                        yield ANSICursor(delta_y=-1, auto_scroll=True)
+                    elif control == "ind":
+                        print("IND")
+                        yield ANSICursor(delta_y=+1, auto_scroll=True)
+                print("CONTROL", repr(code), repr(control))
 
             case ["content", text]:
                 yield ANSICursor(delta_x=len(text), text=text)
@@ -1108,6 +1160,20 @@ class LineRecord:
     """An integer used for caching."""
 
 
+@rich.repr.auto
+class ScrollMargin(NamedTuple):
+    """Margins at the top and bottom of a window that won't scroll."""
+
+    top: int | None = None
+    """Margin at the top (in lines)."""
+    bottom: int | None = None
+    """Margin at the bottom (in lines)."""
+
+    def __rich_repr__(self) -> rich.repr.Result:
+        yield self.top
+        yield self.bottom
+
+
 @dataclass
 class Buffer:
     """A terminal buffer (scrollback or alternate)"""
@@ -1120,6 +1186,9 @@ class Buffer:
 
     folded_lines: list[LineFold] = field(default_factory=list)
     """Folded lines."""
+
+    scroll_margin: ScrollMargin = ScrollMargin(0, 0)
+    """Scroll margins"""
 
     cursor_line: int = 0
     """Folded line index."""
@@ -1135,6 +1204,11 @@ class Buffer:
     @property
     def line_count(self) -> int:
         return len(self.lines)
+
+    @property
+    def last_line_no(self) -> int:
+        """Index of last lines."""
+        return len(self.lines) - 1
 
     @property
     def unfolded_line(self) -> int:
@@ -1490,7 +1564,7 @@ class TerminalState:
         """Width of the terminal."""
         self.height = height
         """Height of the terminal."""
-        self.style = Style()
+        self.style = NULL_STYLE
         """The current style."""
 
         self.show_cursor = True
@@ -1516,11 +1590,6 @@ class TerminalState:
         self.alternate_buffer = Buffer()
         """Alternate buffer lines."""
 
-        self.scroll_margin_top: int = 0
-        """Scroll margin at the top of the screen (initial lines unaffected by scroll operations)"""
-        self.scroll_margin_bottom: int = 0
-        """Scroll margin at bottom of the screen (lines at end of buffer unaffected by scroll operations)"""
-
         self.dec_state = DECState()
         """The DEC (character set) state."""
 
@@ -1530,22 +1599,24 @@ class TerminalState:
         self._updates: int = 0
         """Incrementing integer used in caching."""
 
+    @property
+    def screen_start_line_no(self) -> int:
+        return self.buffer.line_count - self.height
+
+    @property
+    def screen_end_line_no(self) -> int:
+        return self.buffer.line_count
+
     def __rich_repr__(self) -> rich.repr.Result:
         yield "width", self.width
         yield "height", self.height
-        yield "style", self.style, Style()
+        yield "style", self.style, NULL_STYLE
         yield "show_cursor", self.show_cursor, True
         yield "alternate_screen", self.alternate_screen, False
         yield "bracketed_paste", self.bracketed_paste, False
         yield "cursor_blink", self.cursor_blink, False
         yield "replace_mode", self.replace_mode, True
-        yield (
-            "auto_wrap",
-            self.auto_wrap,
-            True,
-        )
-        yield "scroll_margin_top", self.scroll_margin_top, 0
-        yield "scroll_margin_bottom", self.scroll_margin_bottom, 0
+        yield "auto_wrap", self.auto_wrap, True
         yield "dec_state", self.dec_state
 
     @property
@@ -1697,21 +1768,23 @@ class TerminalState:
         buffer = self.buffer
 
         line_count = len(buffer.lines)
-        height = min(line_count, self.height)
-        margin_top = (
-            0 if self.scroll_margin_top is None else (self.scroll_margin_top - 1)
-        )
-        margin_bottom = (
-            0 if self.scroll_margin_bottom is None else (self.scroll_margin_bottom - 1)
-        )
-        line_start = line_count - height + margin_top
-        line_end = line_count
+        print(buffer.scroll_margin)
+        margin_top, margin_bottom = buffer.scroll_margin
+
+        margin_top = buffer.scroll_margin.top or 0
+        margin_bottom = buffer.scroll_margin.bottom or self.height
+
+        line_start = margin_top
+        line_end = margin_bottom
+
+        print(line_start, line_end)
 
         if direction == -1:
-            # up
-            for line_no in range(line_start, line_end - margin_bottom + 1):
+            # up (first in test)
+            print("UP")
+            for line_no in range(line_start, line_end + 1):
                 copy_line_no = line_no + lines
-                if line_no > line_end - margin_bottom - lines:
+                if copy_line_no > margin_bottom:
                     copy_line = EMPTY_LINE
                 else:
                     try:
@@ -1721,14 +1794,19 @@ class TerminalState:
                 self.update_line(buffer, line_no, copy_line)
 
         else:
-            for line_no in reversed(
-                range(line_start + lines, line_end - margin_bottom + 1)
-            ):
+            # down
+            print("DOWN")
+            for line_no in reversed(range(line_start, line_end + 1)):
+                print(line_no)
                 copy_line_no = line_no - lines
-                copy_line = buffer.lines[copy_line_no].content
+                if copy_line_no < margin_top:
+                    copy_line = EMPTY_LINE
+                else:
+                    try:
+                        copy_line = buffer.lines[copy_line_no].content
+                    except IndexError:
+                        copy_line = EMPTY_LINE
                 self.update_line(buffer, line_no, copy_line)
-            for line_no in range(line_start, line_start + lines):
-                self.update_line(buffer, line_no, EMPTY_LINE)
 
     def _handle_ansi_command(self, ansi_command: ANSICommand) -> None:
         if isinstance(ansi_command, ANSINewLine):
@@ -1748,13 +1826,29 @@ class TerminalState:
                 absolute_y,
                 text,
                 replace,
+                _relative,
                 update_background,
+                auto_scroll,
             ):
                 buffer = self.buffer
                 folded_lines = buffer.folded_lines
                 if buffer.cursor_line >= len(folded_lines):
                     while buffer.cursor_line >= len(folded_lines):
                         self.add_line(buffer, EMPTY_LINE)
+
+                if auto_scroll:
+                    if delta_y == +1 and (
+                        buffer.cursor_line + 1
+                        >= self.screen_start_line_no + buffer.scroll_margin.bottom
+                    ):
+                        self.scroll_buffer(-1, 1)
+                        return
+                    elif delta_y == -1 and (
+                        buffer.cursor_line - 1
+                        <= self.screen_start_line_no + buffer.scroll_margin.top
+                    ):
+                        self.scroll_buffer(+1, 1)
+                        return
 
                 folded_line = folded_lines[buffer.cursor_line]
                 previous_content = folded_line.content
@@ -1855,8 +1949,7 @@ class TerminalState:
 
             case ANSIScrollMargin(top, bottom):
                 print("SCROLL REGION", top, bottom)
-                self.scroll_margin_top = top
-                self.scroll_margin_bottom = bottom
+                self.buffer.scroll_margin = ScrollMargin(top, bottom)
                 # Setting the scroll margins moves the cursor to (1, 1)
                 buffer = self.buffer
                 self._line_updated(buffer, buffer.cursor_line)
@@ -1904,9 +1997,10 @@ class TerminalState:
             pass
 
     def _fold_line(self, line_no: int, line: Content, width: int) -> list[LineFold]:
+        updates = self._updates
         if not self.auto_wrap:
-            return [LineFold(line_no, 0, 0, line)]
-        updates = self.advance_updates()
+            return [LineFold(line_no, 0, 0, line, updates)]
+        # updates = self.advance_updates()
         if not width:
             return [LineFold(0, 0, 0, line, updates)]
         line_length = line.cell_length
@@ -1947,19 +2041,16 @@ class TerminalState:
         while line_index >= len(buffer.lines):
             self.add_line(buffer, EMPTY_LINE)
 
-        updates = self.advance_updates()
-
         line_expanded_tabs = line.expand_tabs(8)
         buffer.max_line_width = max(
             line_expanded_tabs.cell_length, buffer.max_line_width
         )
-
         line_record = buffer.lines[line_index]
         line_record.content = line
         line_record.folds[:] = self._fold_line(
             line_index, line_expanded_tabs, self.width
         )
-        line_record.updates = updates
+        line_record.updates = self.advance_updates()
 
         fold_line = buffer.line_to_fold[line_index]
         del buffer.line_to_fold[line_index:]

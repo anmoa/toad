@@ -108,6 +108,11 @@ class Terminal(ScrollView, can_focus=True):
         if self._anchored and not self._anchor_released:
             self.scroll_y = self.max_scroll_y
         self.refresh()
+        # print(
+        #     "CACHE",
+        #     self._terminal_render_cache.hits,
+        #     self._terminal_render_cache.misses,
+        # )
 
     def render_line(self, y: int) -> Strip:
         scroll_x, scroll_y = self.scroll_offset
@@ -126,8 +131,6 @@ class Terminal(ScrollView, can_focus=True):
         rich_style = visual_style.rich_style
 
         state = self.state
-        buffer = state.buffer
-
         buffer = state.scrollback_buffer
         buffer_offset = 0
         if y > len(buffer.folded_lines) and state.alternate_screen:
@@ -140,7 +143,10 @@ class Terminal(ScrollView, can_focus=True):
         except IndexError:
             return Strip.blank(width, rich_style)
 
+        line_record = buffer.lines[line_no]
         cache_key: tuple | None = (self.state.alternate_screen, y, updates)
+        cache_key = None
+
         if (
             not self.hide_cursor
             and state.show_cursor
@@ -149,7 +155,6 @@ class Terminal(ScrollView, can_focus=True):
             if buffer.cursor_offset >= len(line):
                 line = line.pad_right(buffer.cursor_offset - len(line) + 1)
             line_cursor_offset = buffer.cursor_offset
-
             line = line.stylize(
                 self.CURSOR_STYLE, line_cursor_offset, line_cursor_offset + 1
             )
@@ -158,40 +163,34 @@ class Terminal(ScrollView, can_focus=True):
         if (
             not selection
             and cache_key is not None
-            and (cached_strip := self._terminal_render_cache.get(cache_key))
+            and (strip := self._terminal_render_cache.get(cache_key))
         ):
-            cached_strip = cached_strip.crop_extend(x, x + width, rich_style)
-            cached_strip = cached_strip.apply_offsets(x + offset, line_no)
-            return cached_strip
+            strip = strip.crop(x, x + width)
+            strip = strip.adjust_cell_length(width, line_record.style.rich_style)
+            strip = strip.apply_offsets(x + offset, line_no)
+            return strip
 
-        if selection is not None:
-            if select_span := selection.get_span(line_no):
-                unfolded_content = buffer.lines[line_no].content.expand_tabs(8)
-                start, end = select_span
-                if end == -1:
-                    end = len(unfolded_content)
-                selection_style = self.screen.get_visual_style("screen--selection")
-                unfolded_content = unfolded_content.stylize(selection_style, start, end)
-                try:
-                    line = (
-                        self.state._fold_line(line_no, unfolded_content, width)[
-                            line_offset
-                        ]
-                    ).content
-                    cache_key = None
-                except IndexError:
-                    pass
+        if selection is not None and (select_span := selection.get_span(line_no)):
+            unfolded_content = line_record.content.expand_tabs(8)
+            start, end = select_span
+            if end == -1:
+                end = len(unfolded_content)
+            selection_style = self.screen.get_visual_style("screen--selection")
+            unfolded_content = unfolded_content.stylize(selection_style, start, end)
+            try:
+                folded_line = self.state._fold_line(line_no, unfolded_content, width)
+                line = folded_line[line_offset].content
+                cache_key = None
+            except IndexError:
+                pass
 
         strip = Strip(line.render_segments(visual_style), cell_length=line.cell_length)
-        if strip.cell_length < width and (
-            background_style := buffer.lines[line_no].style
-        ):
-            strip = strip.adjust_cell_length(width, background_style.rich_style)
 
         if cache_key is not None:
             self._terminal_render_cache[cache_key] = strip
 
-        strip = strip.crop_extend(x, x + width, rich_style)
+        strip = strip.crop(x, x + width)
+        strip = strip.adjust_cell_length(width, line_record.style.rich_style)
         strip = strip.apply_offsets(x + offset, line_no)
 
         return strip
