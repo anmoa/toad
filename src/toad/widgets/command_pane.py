@@ -168,7 +168,7 @@ if __name__ == "__main__":
     COMMAND = os.environ["SHELL"]
     # COMMAND = "python test_input.py"
 
-    COMMAND = "nano"
+    COMMAND = "htop"
 
     class CommandApp(App):
         CSS = """

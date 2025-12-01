@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from asyncio import Future
 import asyncio
+from itertools import filterfalse
 from operator import attrgetter
 import platform
 from typing import TYPE_CHECKING, Literal
@@ -29,7 +30,6 @@ from textual.layouts.grid import GridLayout
 from textual.layout import WidgetPlacement
 
 
-import toad
 from toad import jsonrpc, messages
 from toad import paths
 from toad.agent_schema import Agent as AgentData
@@ -45,6 +45,7 @@ from toad.widgets.menu import Menu
 from toad.widgets.note import Note
 from toad.widgets.prompt import Prompt
 from toad.widgets.throbber import Throbber
+from toad.widgets.terminal import Terminal
 from toad.widgets.user_input import UserInput
 from toad.shell import Shell, CurrentWorkingDirectoryChanged, ShellFinished
 from toad.slash_command import SlashCommand
@@ -246,10 +247,11 @@ class Conversation(containers.Vertical):
         self._loading: Loading | None = None
         self._agent_response: AgentResponse | None = None
         self._agent_thought: AgentThought | None = None
-        self._terminal: Terminal | None = None
         self._last_escape_time: float = monotonic()
         self._agent_data = agent
         self._mouse_down_offset: Offset | None = None
+
+        self._focusable_terminals: list[Terminal] = []
 
         self.project_data_path = paths.get_project_data(project_path)
         self.shell_history = History(self.project_data_path / "shell_history.jsonl")
@@ -302,6 +304,57 @@ class Conversation(containers.Vertical):
             modes=Conversation.modes,
         )
 
+    @property
+    def _terminal(self) -> Terminal | None:
+        """Return the last focusable terminal, if there is one.
+
+        Returns:
+            A focusable (non finalized) terminal.
+        """
+        # Terminals should be removed in response to the Terminal.FInalized message
+        # This is a bit of a sanity check
+        self._focusable_terminals[:] = list(
+            filterfalse(attrgetter("is_finalized"), self._focusable_terminals)
+        )
+        if self._focusable_terminals:
+            return self._focusable_terminals[-1]
+        return None
+
+    def add_focusable_terminal(self, terminal: Terminal) -> None:
+        """Add a focusable terminal.
+
+        Args:
+            terminal: Terminal instance.
+        """
+        if not terminal.is_finalized:
+            self._focusable_terminals.append(terminal)
+
+    @on(Terminal.Finalized)
+    def on_terminal_finalized(self, event: Terminal.Finalized) -> None:
+        """Terminal was finalized, so we can remove it from the list."""
+        try:
+            self._focusable_terminals.remove(event.terminal)
+        except ValueError:
+            pass
+
+    @on(Terminal.AlternateScreenChanged)
+    def on_terminal_alternate_screen_(
+        self, event: Terminal.AlternateScreenChanged
+    ) -> None:
+        """A terminal enabled or disabled alternate screen."""
+        if event.enabled:
+            event.terminal.focus()
+        else:
+            self.focus_prompt()
+
+    @on(events.DescendantFocus, "Terminal")
+    def on_terminal_focus(self, event: events.DescendantFocus) -> None:
+        self.flash("Press [b]escape[/b] [i]twice[/] to exit terminal", style="success")
+
+    @on(events.DescendantBlur, "Terminal")
+    def on_terminal_blur(self, event: events.DescendantFocus) -> None:
+        self.focus_prompt()
+
     @on(messages.Flash)
     def on_flash(self, event: messages.Flash) -> None:
         event.stop()
@@ -325,9 +378,7 @@ class Conversation(containers.Vertical):
 
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
         if action == "focus_terminal":
-            return (
-                None if self._terminal is None or self._terminal.is_finalized else True
-            )
+            return None if self._terminal is None else True
         if action == "mode_switcher":
             return bool(self.modes)
         if action == "cancel":
@@ -345,7 +396,7 @@ class Conversation(containers.Vertical):
         return True
 
     async def action_focus_terminal(self) -> None:
-        if self._terminal is not None and not self._terminal.is_finalized:
+        if self._terminal is not None:
             self._terminal.focus()
         else:
             self.flash("Nothing to focus...", style="error")
@@ -655,7 +706,7 @@ class Conversation(containers.Vertical):
         return terminal
 
     async def action_interrupt(self) -> None:
-        if self._terminal is not None and not self._terminal.is_finalized:
+        if self._terminal is not None:
             await self.shell.interrupt()
             self._shell = None
             self.flash("Command interrupted", style="success")
@@ -1031,7 +1082,7 @@ class Conversation(containers.Vertical):
         )
         terminal.display = False
         terminal = await self.post(terminal)
-        self._terminal = terminal
+        self.add_focusable_terminal(terminal)
         self.refresh_bindings()
         return terminal
 

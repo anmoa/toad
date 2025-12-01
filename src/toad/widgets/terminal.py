@@ -1,9 +1,12 @@
+from dataclasses import dataclass
+
 from time import monotonic
 from typing import Any, Callable
 
 from textual.cache import LRUCache
 
 from textual import events
+from textual.message import Message
 from textual.reactive import reactive
 from textual.selection import Selection
 from textual.style import Style
@@ -24,6 +27,27 @@ class Terminal(ScrollView, can_focus=True):
     CURSOR_STYLE = Style.parse("reverse")
 
     hide_cursor = reactive(False)
+
+    @dataclass
+    class Finalized(Message):
+        """Terminal was finalized."""
+
+        terminal: Terminal
+
+        @property
+        def control(self) -> Terminal:
+            return self.terminal
+
+    @dataclass
+    class AlternateScreenChanged(Message):
+        """Terminal enabled or disabled alternate screen."""
+
+        terminal: Terminal
+        enabled: bool
+
+        @property
+        def control(self) -> Terminal:
+            return self.terminal
 
     def __init__(
         self,
@@ -62,6 +86,8 @@ class Terminal(ScrollView, can_focus=True):
         self._escape_reset_timer: Timer | None = None
         self._finalized: bool = False
         self.current_directory: str | None = None
+        self._alternate_screen: bool = False
+
         self._terminal_render_cache: LRUCache[tuple, Strip] = LRUCache(1024)
         self._write_to_stdin: Callable[[str], Any] | None = None
 
@@ -109,6 +135,7 @@ class Terminal(ScrollView, can_focus=True):
             self._terminal_render_cache.clear()
             self.refresh()
             self.blur()
+            self.post_message(self.Finalized(self))
 
     def allow_focus(self) -> bool:
         """Prohibit focus when the terminal is finalized and couldn't accept input."""
@@ -166,6 +193,12 @@ class Terminal(ScrollView, can_focus=True):
         self._update_from_state(scrollback_delta, alternate_delta)
         scrollback_changed = bool(scrollback_delta is None or scrollback_delta)
         alternate_changed = bool(alternate_delta is None or alternate_delta)
+
+        if self._alternate_screen != self.state.alternate_screen:
+            self.post_message(
+                self.AlternateScreenChanged(self, enabled=self.state.alternate_screen)
+            )
+        self._alternate_screen = self.state.alternate_screen
         return scrollback_changed or alternate_changed
 
     def on_click(self, event: events.Click) -> None:

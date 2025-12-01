@@ -627,6 +627,10 @@ class ANSIStream:
                     if (ansi_segment := self._parse_csi(csi)) is not None:
                         yield ansi_segment
 
+            case ["csd", csd]:
+                pass
+                # TODO
+
             case ["dec", dec]:
                 slot, character_set = list(dec)
                 yield ANSICharacterSet(DEC(DEC_SLOTS[slot], character_set))
@@ -646,7 +650,7 @@ class ANSIStream:
                 yield ANSICursor(delta_x=len(text), text=text)
 
             case _:
-                print(_)
+                print("UNKNWON TOKEN", repr(token))
 
 
 class LineFold(NamedTuple):
