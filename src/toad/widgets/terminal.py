@@ -164,7 +164,9 @@ class Terminal(ScrollView, can_focus=True):
         """
         scrollback_delta, alternate_delta = self.state.write(text)
         self._update_from_state(scrollback_delta, alternate_delta)
-        return bool(scrollback_delta or alternate_delta)
+        scrollback_changed = bool(scrollback_delta is None or scrollback_delta)
+        alternate_changed = bool(alternate_delta is None or alternate_delta)
+        return scrollback_changed or alternate_changed
 
     def on_click(self, event: events.Click) -> None:
         self.focus()
@@ -249,7 +251,6 @@ class Terminal(ScrollView, can_focus=True):
         try:
             folded_line_ = buffer.folded_lines[y - buffer_offset]
             line_no, line_offset, offset, line, updates = folded_line_
-            print(repr(line.plain))
         except IndexError:
             return Strip.blank(width, rich_style)
 

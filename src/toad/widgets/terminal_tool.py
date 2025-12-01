@@ -246,11 +246,7 @@ class TerminalTool(Terminal):
         unicode_decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
         try:
             while True:
-                data = await shell_read(
-                    reader,
-                    BUFFER_SIZE,
-                    max_buffer_duration=1 / 30,
-                )
+                data = await shell_read(reader, BUFFER_SIZE)
                 if process_data := unicode_decoder.decode(data, final=not data):
                     self._record_output(data)
                     if self.write(process_data):

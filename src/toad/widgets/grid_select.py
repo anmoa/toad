@@ -60,6 +60,18 @@ class GridSelect(containers.ItemGrid, can_focus=True):
         assert isinstance(self.layout, GridLayout)
         return self.layout.grid_size
 
+    def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
+        if action in {"cursor_up", "cursor_down", "cursor_left", "cursor_right"}:
+            return (
+                None
+                if (
+                    (self.grid_size is None or self.highlighted is None)
+                    or len(self.children) <= 1
+                )
+                else True
+            )
+        return True
+
     def on_focus(self):
         if self.highlighted is None:
             self.highlighted = 0

@@ -14,7 +14,7 @@ from rich.cells import cell_len
 
 from textual import events
 from textual.color import Color
-from textual.content import Content
+from textual.content import Content, EMPTY_CONTENT
 from textual.style import Style, NULL_STYLE
 
 from toad.ansi._ansi_colors import ANSI_COLORS
@@ -926,6 +926,11 @@ class TerminalState:
         return self.buffer.line_count
 
     @property
+    def updates(self) -> int:
+        """An integer that advanvces when the state is changed."""
+        return self._updates
+
+    @property
     def buffer(self) -> Buffer:
         """The buffer (scrollack or alternate)"""
         if self.alternate_screen:
@@ -1107,7 +1112,7 @@ class TerminalState:
         buffer = self.buffer
         margin_top, margin_bottom = buffer.scroll_margin.get_line_range(self.height)
 
-        copy_content = Content("")
+        copy_content = EMPTY_CONTENT
         copy_style = NULL_STYLE
         if direction == -1:
             # up (first in test)
@@ -1271,6 +1276,7 @@ class TerminalState:
                     self.cursor_keys = features.cursor_keys
                 if features.auto_wrap is not None:
                     self.auto_wrap = features.auto_wrap
+                self.advance_updates()
 
             case ANSIClear(clear):
                 self.clear_buffer(clear)
