@@ -44,8 +44,8 @@ from toad.widgets.flash import Flash
 from toad.widgets.menu import Menu
 from toad.widgets.note import Note
 from toad.widgets.prompt import Prompt
-from toad.widgets.throbber import Throbber
 from toad.widgets.terminal import Terminal
+from toad.widgets.throbber import Throbber
 from toad.widgets.user_input import UserInput
 from toad.shell import Shell, CurrentWorkingDirectoryChanged, ShellFinished
 from toad.slash_command import SlashCommand
@@ -1065,12 +1065,12 @@ class Conversation(containers.Vertical):
         Returns:
             A new (mounted) Terminal widget.
         """
-        from toad.widgets.terminal import Terminal
+        from toad.widgets.shell_terminal import ShellTerminal
 
         if self._terminal is not None:
             self._terminal.finalize()
         terminal_width, terminal_height = self.get_terminal_dimensions()
-        terminal = Terminal(
+        terminal = ShellTerminal(
             size=(terminal_width, terminal_height),
             get_terminal_dimensions=self.get_terminal_dimensions,
         )

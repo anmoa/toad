@@ -7,6 +7,7 @@ from textual.cache import LRUCache
 
 from textual import on
 from textual import events
+from textual.css.query import NoMatches
 from textual.message import Message
 from textual.reactive import reactive
 from textual.selection import Selection
@@ -182,7 +183,11 @@ class Terminal(ScrollView, can_focus=True):
         ):
             from toad.widgets.conversation import Conversation
 
-            if (conversation := self.query_ancestor(Conversation)) is not None:
+            try:
+                conversation = self.query_ancestor(Conversation)
+            except NoMatches:
+                pass
+            else:
                 conversation.shell.update_size(self._width, self._height)
 
         self.state.update_size(self._width, height)
