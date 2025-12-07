@@ -1172,6 +1172,8 @@ class TerminalState:
             buffer._updated_lines = None
             folded_cursor_line = buffer.cursor_line
             cursor_line, cursor_line_offset = buffer.cursor
+            while buffer.cursor_line >= len(buffer.folded_lines):
+                self.add_line(buffer, EMPTY_LINE)
             line = buffer.lines[cursor_line]
             del buffer.lines[cursor_line + 1 :]
             del buffer.line_to_fold[cursor_line + 1 :]

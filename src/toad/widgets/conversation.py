@@ -476,7 +476,16 @@ class Conversation(containers.Vertical):
     async def on_agent_fail(self, message: AgentFail) -> None:
         self.agent_ready = True
         self.notify(message.message, title="Agent failure", severity="error", timeout=5)
-        await self.post(Note(message.details.strip(), classes="-error"))
+
+        if message.message:
+            error = Content.assemble(
+                (message.message, "bold"),
+                " ",
+                message.details.strip()
+            )
+        else:
+            error = Content(message.details.strip())
+        await self.post(Note(error, classes="-error"))
 
     @on(messages.WorkStarted)
     def on_work_started(self) -> None:

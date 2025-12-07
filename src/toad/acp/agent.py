@@ -467,12 +467,21 @@ class Agent(AgentBase):
     async def run(self) -> None:
         """The main logic of the Agent."""
         if constants.ACP_INITIALIZE:
-            # Boilerplate to initialize comms
-            await self.acp_initialize()
-            # Create a new session
-            await self.acp_new_session()
-
-            self.post_message(AgentReady())
+            try:
+                # Boilerplate to initialize comms
+                await self.acp_initialize()
+                # Create a new session
+                await self.acp_new_session()
+            except jsonrpc.APIError as error:
+                if isinstance(error.data, dict):
+                    reason = str(error.data.get("reason") or "")
+                    details = str(error.data.get("details") or "")
+                else:
+                    reason = "Failed to initialize agent"
+                    details = ""
+                self.post_message(AgentFail(reason, details))
+                
+        self.post_message(AgentReady())
 
     async def send_prompt(self, prompt: str) -> str | None:
         """Send a prompt to the agent.

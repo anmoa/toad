@@ -144,7 +144,10 @@ class CommandPane(Terminal):
                     try:
                         self.write(line)
                     except Exception as error:
+                        print(repr(line))
                         print(error)
+                        from traceback import print_exc
+                        print_exc()
 
                 if not data:
                     break
