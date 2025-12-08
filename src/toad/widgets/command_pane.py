@@ -142,7 +142,7 @@ class CommandPane(Terminal):
                 data = await shell_read(reader, BUFFER_SIZE)
                 if line := unicode_decoder.decode(data, final=not data):
                     try:
-                        self.write(line)
+                        await self.write(line)
                     except Exception as error:
                         print(repr(line))
                         print(error)
@@ -162,10 +162,6 @@ class CommandPane(Terminal):
             self.set_class(return_code != 0, "-fail")
         self.post_message(self.CommandComplete(return_code or 0))
         self.hide_cursor = True
-
-    def write_process_stdin(self, input: str) -> None:
-        stdin_bytes = input.encode("utf-8")
-        self.write_transport.write(stdin_bytes)
 
 
 if __name__ == "__main__":
