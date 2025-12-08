@@ -182,14 +182,14 @@ class Shell:
 
         while True:
             data = await shell_read(reader, BUFFER_SIZE)
-
-            for string_bytes in list(self._hide_echo):
+            
+            for string_bytes in list(self._hide_echo):                
                 remove_bytes = string_bytes.replace(b"\n", b"\r\n")
-                if remove_bytes in data:
-                    data = data.replace(remove_bytes, b"", 1)
+                if remove_bytes in data:                    
+                    data = data.replace(remove_bytes, b"")                    
                     self._hide_echo.discard(string_bytes)
                     if not data:
-                        data = b"\r"
+                        data = b"\r"                    
 
             if line := unicode_decoder.decode(data, final=not data):
                 if self.terminal is None or self.terminal.is_finalized:

@@ -386,6 +386,7 @@ class Terminal(ScrollView, can_focus=True):
         self._escaping = False
 
     async def on_key(self, event: events.Key):
+        print(repr(event))
         event.prevent_default()
         event.stop()
 
