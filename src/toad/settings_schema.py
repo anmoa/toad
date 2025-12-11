@@ -108,6 +108,13 @@ SCHEMA: list[SchemaDict] = [
                 "help": "Show agent's 'thoughts' in the conversation?",
                 "type": "boolean",
             },
+            {
+                "key": "warn",
+                "title": "Warnings against dangerous commands?",
+                "help": "Please note that this can produce false positive [i]and[/i] false negatives. If you get a warning, examine the command more closely. But do not assume a command is safe if you get no warning.\n\nThis setting will have no effect if you have given the agent permissions to execute all commands.",
+                "type": "boolean",
+                "default": True,
+            },
         ],
     },
     {

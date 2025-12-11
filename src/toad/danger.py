@@ -250,8 +250,18 @@ class CommandAtom(NamedTuple):
     """The path to which this command is expected to apply."""
 
 
+def detect(
+    project_directory: str, current_working_directory: str, command_line: str
+) -> DangerLevel:
+    atoms = list(analyze(project_directory, current_working_directory, command_line))
+    print(atoms)
+    if atoms:
+        return max(command_atom.level for command_atom in atoms)
+    return DangerLevel.SAFE
+
+
 def analyze(
-    project_dir: str, current_working_directory: str, command_line: str
+    project_directory: str, current_working_directory: str, command_line: str
 ) -> Iterable[CommandAtom]:
     """Analyze a command and generate information about potentially destructive commands.
 
@@ -262,52 +272,67 @@ def analyze(
     Yields:
         `CommandAtom` objects.
     """
-    project_path = Path(project_dir).resolve()
+    project_path = Path(project_directory).resolve()
 
     import bashlex
     from bashlex import ast
 
-    def recurse_nodes(root_path: Path, root_node: ast.node) -> Iterable[CommandAtom]:
-        for node in root_node.parts:
-            if node.kind != "command":
-                continue
-            command_name = node.parts[0].word
-            parts = node.parts[1:]
-            change_directory = command_name in CHANGE_DIRECTORY
+    def recurse_nodes(root_path: Path, nodes: list[node]) -> Iterable[CommandAtom]:
+        for node in nodes:
+            print(node.kind)
+            if node.kind == "list":
+                yield from recurse_nodes(root_path, node.parts)
+                return
 
+            if node.kind == "operator":
+                continue
+
+            command_name = node.parts[0].word
             level = DangerLevel.UNKNOWN
             if command_name in SAFE_COMMANDS:
                 level = DangerLevel.SAFE
             elif command_name in UNSAFE_COMMANDS:
                 level = DangerLevel.DANGEROUS
 
+            parts = node.parts[1:]
+
+            if not parts:
+                yield CommandAtom(command_name, level, root_path)
+                continue
+
+            change_directory = command_name in CHANGE_DIRECTORY
+
             for command_node in parts:
                 command_word = command_line[slice(*node.pos)]
                 if command_node.kind == "command":
-                    yield from recurse_nodes(root_path, command_node)
-                elif not command_node.word.startswith(("-", "+")):
-                    word = command_line[slice(*command_node.pos)]
-                    if change_directory:
-                        root_path = (root_path / word).resolve()
-                    else:
-                        target_path = root_path / word
-                        if (
-                            level == DangerLevel.DANGEROUS
-                            and not target_path.is_relative_to(project_path)
-                        ):
-                            # If refers to a path outside of the project, upgrade to destructive
-                            level = DangerLevel.DESTRUCTIVE
+                    yield from recurse_nodes(root_path, node.parts)
+                    continue
+                if command_node.word.startswith(("-", "+")):
+                    continue
+                word = command_line[slice(*command_node.pos)]
+                if change_directory:
+                    root_path = (root_path / word).resolve()
+                    continue
 
-                        yield CommandAtom(command_word, level, target_path)
+                target_path = (root_path / word).resolve()
+                if level == DangerLevel.DANGEROUS and not target_path.is_relative_to(
+                    project_path
+                ):
+                    # If refers to a path outside of the project, upgrade to destructive
+                    level = DangerLevel.DESTRUCTIVE
+
+                yield CommandAtom(command_word, level, target_path)
 
     current_path = Path(current_working_directory)
-    for node in bashlex.parse(command_line):
-        if node.kind == "list":
-            yield from recurse_nodes(current_path, node)
+    nodes = bashlex.parse(command_line)
+
+    yield from recurse_nodes(current_path, nodes)
 
 
 if __name__ == "__main__":
+    import os
     from rich import print
 
-    for atom in analyze("./", "./", "cd ../;rm foo"):
-        print(atom)
+    TEST = ["ls;ls", "echo 'hello world'", "rm foo", "rm ../foo", "rm /"]
+    for test in TEST:
+        print(repr(test), detect(os.getcwd(), os.getcwd(), test))
