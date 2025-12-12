@@ -1145,7 +1145,6 @@ class TerminalState:
         Returns:
             A pair of deltas or `None for full refresh, for scrollback and alternate screen.
         """
-
         alternate_buffer = self.alternate_buffer
         scrollback_buffer = self.scrollback_buffer
 

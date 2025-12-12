@@ -216,7 +216,6 @@ class Terminal(ScrollView, can_focus=True):
         Returns:
             `True` if the state visuals changed, `False` if no visual change.
         """
-
         scrollback_delta, alternate_delta = await self.state.write(text)
         self._update_from_state(scrollback_delta, alternate_delta)
         scrollback_changed = bool(scrollback_delta is None or scrollback_delta)
