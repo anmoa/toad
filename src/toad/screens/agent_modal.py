@@ -81,13 +81,13 @@ class AgentModal(ModalScreen):
 
     @on(widgets.Checkbox.Changed)
     def on_checkbox_changed(self, event: widgets.Select.Changed) -> None:
-        launcher_set = set(self.app.settings.get("launcher.agents", str).splitlines())
+        launcher_agents = self.app.settings.get("launcher.agents", str).splitlines()
         agent_identity = self._agent["identity"]
+        if agent_identity in launcher_agents:
+            launcher_agents.remove(agent_identity)
         if event.value:
-            launcher_set.add(agent_identity)
-        else:
-            launcher_set.discard(agent_identity)
-        self.app.settings.set("launcher.agents", "\n".join(launcher_set))
+            launcher_agents.insert(0, agent_identity)
+        self.app.settings.set("launcher.agents", "\n".join(launcher_agents))
 
     @on(widgets.Select.Changed)
     def on_select_changed(self, event: widgets.Select.Changed) -> None:

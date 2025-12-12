@@ -121,6 +121,8 @@ class CommandPane(Terminal):
 
         self._size_changed()
 
+        self.set_write_to_stdin(self.write)
+
         BUFFER_SIZE = 64 * 1024
         reader = asyncio.StreamReader(BUFFER_SIZE)
         protocol = asyncio.StreamReaderProtocol(reader)
@@ -173,7 +175,9 @@ if __name__ == "__main__":
     # COMMAND = "htop"
     # COMMAND = "python test_scroll_margins.py"
 
-    COMMAND = "python cpr.py"
+    # COMMAND = "python cpr.py"
+
+    COMMAND = "python test_input.py"
 
     class CommandApp(App):
         CSS = """

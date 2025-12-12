@@ -49,9 +49,5 @@ For ACP adapter (used by editors): Install from https://github.com/zed-industrie
 '''
 
 [actions."*".install]
-command = "npm install -g @openai/codex"
+command = "npm install -g @openai/codex;npx @zed-industries/codex-acp"
 description = "Install Codex CLI"
-
-[actions."*".install_homebrew]
-command = "brew install --cask codex"
-description = "Install Codex CLI via Homebrew"
