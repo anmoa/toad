@@ -111,7 +111,7 @@ class SlashComplete(containers.VerticalGroup):
         self.fuzzy_search.cache.grow(len(deduplicated_slash_commands))
 
         if prompt:
-            slash_prompt = f".{prompt}"
+            slash_prompt = f"/{prompt}"
             scores: list[tuple[float, Sequence[int], SlashCommand]] = [
                 (
                     *self.fuzzy_search.match(prompt, slash_command.command[1:]),
