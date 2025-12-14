@@ -108,7 +108,6 @@ class PromptTextArea(HighlightedTextArea):
     suggestions: var[list[str] | None] = var(None)
     suggestions_index: var[int] = var(0)
 
-    auto_completed_slash_command = var("")
     project_path = var(Path())
     working_directory = var("")
 
@@ -393,7 +392,6 @@ class Prompt(containers.VerticalGroup):
     agent_ready: var[bool] = var(False)
     current_mode: var[Mode | None] = var(None)
     modes: var[dict[str, Mode] | None] = var(None)
-    auto_completed_slash_command = var("")
 
     app = getters.app(ToadApp)
 
@@ -586,9 +584,6 @@ class Prompt(containers.VerticalGroup):
     def on_text_area_changed(self, event: TextArea.Changed) -> None:
         text = event.text_area.text
 
-        if not text.startswith(f"{self.auto_completed_slash_command} "):
-            self.auto_completed_slash_command = ""
-
         self.multi_line = "\n" in text or "```" in text
 
         if not self.multi_line and self.likely_shell:
@@ -618,7 +613,6 @@ class Prompt(containers.VerticalGroup):
 
     @on(SlashComplete.Completed)
     def on_slash_complete_completed(self, event: SlashComplete.Completed) -> None:
-        self.auto_completed_slash_command = event.command
         self.prompt_text_area.clear()
         self.prompt_text_area.insert(f"{event.command} ")
 
@@ -682,7 +676,6 @@ class Prompt(containers.VerticalGroup):
                     agent_ready=Prompt.agent_ready,
                     project_path=Prompt.project_path,
                     working_directory=Prompt.working_directory,
-                    auto_completed_slash_command=Prompt.auto_completed_slash_command,
                     slash_commands=Prompt.slash_commands,
                 )
 
