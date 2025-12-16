@@ -5,6 +5,19 @@ from toad.app import ToadApp
 from toad.agent_schema import Agent
 
 
+def check_directory(path: str) -> None:
+    """Check a path is directory, or exit the app.
+
+    Args:
+        path: Path to check.
+    """
+    from pathlib import Path
+
+    if not Path(path).resolve().is_dir():
+        print(f"Not a directory: {path}")
+        sys.exit(-1)
+
+
 async def get_agent_data(launch_agent) -> Agent | None:
     launch_agent = launch_agent.lower()
 
@@ -67,8 +80,8 @@ def main():
 @click.option("--serve", is_flag=True, help="Serve Toad as a web application")
 def run(port: int, host: str, serve: bool, project_dir: str = ".", agent: str = "1"):
     """Run an agent (with also run with `toad PATH`)."""
-    # if ctx.invoked_subcommand is not None:
-    #     return
+
+    check_directory(project_dir)
 
     if agent:
         import asyncio
