@@ -359,7 +359,10 @@ class Agent(AgentBase):
     async def _run_agent(self) -> None:
         """Task to communicate with the agent subprocess."""
 
-        agent_output = open("agent.jsonl", "wb")
+        if constants.DEBUG:
+            agent_output = open("agent.jsonl", "wb")
+        else:
+            agent_output = None
 
         PIPE = asyncio.subprocess.PIPE
         env = os.environ.copy()
@@ -411,8 +414,9 @@ class Agent(AgentBase):
             if not line.strip():
                 continue
 
-            agent_output.write(line)
-            agent_output.flush()
+            if agent_output is not None:
+                agent_output.write(line)
+                agent_output.flush()
 
             try:
                 line_str = line.decode("utf-8")
@@ -464,7 +468,8 @@ class Agent(AgentBase):
                 )
             )
 
-        agent_output.close()
+        if agent_output is not None:
+            agent_output.close()
 
     async def run(self) -> None:
         """The main logic of the Agent."""
