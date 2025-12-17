@@ -1,19 +1,6 @@
 # Toad
 
-Welcome to the Toad repository!
-
-This repository is currently private.
-If you are here, it is because you had a personal invite from me, and I value your opinion.
-I'm looking for early feedback, and potential collaboration in the future (if you're interested).
-
-I am particularly interested in your feedback on usability right now.
-This class of apps is so new, I think there is plenty of room for innovation.
-
-Please use the Discussions tab for your feedback and bug reports.
-Avoid issues and PRs for now, unless we've agreed on them in the Discussions tab.
-
-Toad is very much a work in progress.
-See [notes.md](https://github.com/Textualize/toad/blob/main/notes.md) for details about what to expect.
+A unified interface for AI in your terminal.
 
 <table>
 
@@ -34,64 +21,79 @@ See [notes.md](https://github.com/Textualize/toad/blob/main/notes.md) for detail
   
 </table>
 
+## Compatibility
 
+Toad runs on Linux and macOS. Native Windows support is lacking, but Toad till run quite well with WSL.
 
-## What is Toad?
-
-Toad is a universal interface to AI agents, which includes chat bots and agentic coding.
-Here's a tongue-in-check write up on my blog: https://willmcgugan.github.io/announcing-toad/
-
-## Talk about Toad!
-
-Please **do** talk about Toad!
-Generating a buzz ahead of the first open release will be very beneficial.
-
-You may share your thoughts on social media in addition to screenshots and videos (but obviously no code from this repository).
-Please [tag me](https://github.com/willmcgugan) in your posts.
-
-I intend to release a first public version when there is enough core functionality.
-Progress has been good. So I would expect a release in December.
-
-## Requirements
-
-Works on Linux and Mac. Windows works with WSL.
-
+Toad is a terminal application.
 Any terminal will work, although if you are using the default terminal on macOS you will get a much reduced experience.
 I recommend [Ghostty](https://ghostty.org/) which is fully featured and has amazing performance.
 
-## Getting started
 
-Assuming you have [UV](https://docs.astral.sh/uv/getting-started/installation/) installed, running `toad` should be as simple as cloning the repository and running the following:
+## Getting Started
 
-```
-uv run toad
-```
+The easiest way to install Toad is by pasting the following in to your terminal:
 
-If your favorite agent isn't listed, you can use the `acp` subcommand:
-
-```
-uv run toad acp "gemini --experimental-acp"
+```bash
+curl -fsSL batrachian.ai/install | bash
 ```
 
-## Web terminal
+Python developers may prefer to install with the following (assumes you have [uv](https://docs.astral.sh/uv/) installed):
 
-There is an experimental web server mode. Add `--serve` to the CLI command and click the URL in the terminal.
+```bash
+uvx install -U batrachian-toad
+```
 
-## Installing agents
+## Using Toad
 
-Agents need to be installed separately, and require support for [ACP](https://agentclientprotocol.com/overview/introduction).
+Launch Toad with the following:
 
-You will need to install the agent and authenticate at least once with the agent's own CLI tool.
-After that you can use Toad to interact with it.
+```bash
+toad
+```
 
+You should see something line the following:
 
-## Thanks
+<img width="1266" height="994" alt="front-fs8" src="https://github.com/user-attachments/assets/8831f7de-5349-4b3f-9de9-d4565b513108" />
 
-Thanks for being a part of this!
+From this screen you will be able to find, install, and launch a coding agent.
+If you already have an agent installed, you can skip the install step.
+To launch an agent, select it and press space.
 
-See you in discussions.
+The footer will always display the most significant keys for the current context.
+To see all the keys, summon the command palette for `ctrl+p` and search for "keys".
+
+### Toad CLI
+
+WHen running Toad, the current working directory is assumed to be your project directory.
+To use another project directory, add the path.
+
+```bash
+toad ~/projects/my-awesome-app
+```
+
+If you want to skip the initial agent screen, add the `-a` switch with the name of your chosen agent.
+For example:
+
+```bash
+toad -a open-hands
+```
+
+### Web server
+
+You can also run Toad as a web application.
+
+Run the following, and click the link in the terminal:
+
+```bash
+toad serve
+```
+
+![textual-serve](https://github.com/user-attachments/assets/1d861d48-d30b-44cd-972d-5986a01360bf)
+
 
 I'm also in the #toad channel on the [Textualize discord server](https://discord.gg/Enf6Z3qhVr).
+
 
 
 
