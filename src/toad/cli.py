@@ -105,6 +105,7 @@ def run(port: int, host: str, serve: bool, project_dir: str = ".", agent: str = 
         for flag in ["--serve", "-s"]:
             try:
                 command_args.remove(flag)
+                break
             except ValueError:
                 pass
         serve_command = shlex.join(command_args)
