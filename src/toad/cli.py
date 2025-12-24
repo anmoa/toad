@@ -81,7 +81,7 @@ def main():
 )
 @click.option("-s", "--serve", is_flag=True, help="Serve Toad as a web application")
 def run(port: int, host: str, serve: bool, project_dir: str = ".", agent: str = "1"):
-    """Run an agent (with also run with `toad PATH`)."""
+    """Run an installed agent (same as `toad PATH`)."""
 
     check_directory(project_dir)
 
@@ -124,6 +124,7 @@ def run(port: int, host: str, serve: bool, project_dir: str = ".", agent: str = 
 
 @main.command("acp")
 @click.argument("command", metavar="COMMAND")
+@click.argument("project_dir", metavar="PATH", default=None)
 @click.option(
     "-t",
     "--title",
@@ -156,7 +157,7 @@ def acp(
     project_dir: str | None,
     serve: bool = False,
 ) -> None:
-    """Run an ACP agent."""
+    """Run an ACP agent from a command."""
 
     from rich import print
 
