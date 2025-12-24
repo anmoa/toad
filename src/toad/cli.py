@@ -102,11 +102,9 @@ def run(port: int, host: str, serve: bool, project_dir: str = ".", agent: str = 
         from textual_serve.server import Server
 
         command_args = sys.argv
-        try:
-            command_args.remove("--serve")
-        except ValueError:
+        for flag in ["--serve", "-s"]:
             try:
-                command_args.remove("-s")
+                command_args.remove(flag)
             except ValueError:
                 pass
         serve_command = shlex.join(command_args)
