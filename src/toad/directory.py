@@ -102,7 +102,7 @@ class ScanJob:
 async def scan(
     root: Path,
     *,
-    max_simultaneous: int = 5,
+    max_simultaneous: int = 10,
     path_filter: PathFilter | None = None,
     add_directories: bool = False,
 ) -> list[Path]:
@@ -179,6 +179,8 @@ class Scan:
 
 
 class DirectoryScanner:
+    """Object to recursively scan a directory."""
+
     def __init__(self, root: PathLike) -> None:
         self.root = Path(root)
         self.directories: dict[Path, Scan] = {}

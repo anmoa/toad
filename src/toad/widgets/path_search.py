@@ -179,31 +179,34 @@ class PathSearch(containers.VerticalGroup):
                 self.post_message(InsertPath(option.id))
                 self.post_message(Dismiss(self))
 
-    def watch_root(self, root: Path) -> None:
-        pass
-
     def get_path_filter(self, project_path: Path) -> PathFilter:
+        """Get a PathFilter insance for the give project path.
+
+        Args:
+            project_path: Project path.
+
+        Returns:
+            `PathFilter` object.
+        """
         path_filter = PathFilter.from_git_root(project_path)
-        print(path_filter)
         return path_filter
 
-    @work(exclusive=True)
-    async def load_paths(self) -> None:
+    def reset(self) -> None:
+        """Reset and focus input."""
         self.input.clear()
         self.input.focus()
-        root = self.root
 
-        self.loading = True
+    @work(exclusive=True)
+    async def refresh_paths(self):
+        root = self.root
         path_filter = await asyncio.to_thread(self.get_path_filter, root)
         paths = await directory.scan(
             root, path_filter=path_filter, add_directories=True
         )
 
         paths = [path.absolute() for path in paths]
-        # paths.sort(key=lambda path: (len(path.parts), str(path).lower()))
         self.root = root
         self.paths = paths
-        self.loading = False
 
     def get_loading_widget(self) -> Widget:
         from textual.widgets import LoadingIndicator
@@ -246,4 +249,3 @@ class PathSearch(containers.VerticalGroup):
         )
         self.option_list.highlighted = 0
         self.post_message(PromptSuggestion(""))
-        self.input.focus()

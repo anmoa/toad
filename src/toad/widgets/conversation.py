@@ -637,6 +637,7 @@ class Conversation(containers.Vertical):
         self._agent_response = None
         self._agent_thought = None
         self.post_message(messages.ProjectDirectoryUpdated())
+        self.prompt.new_turn()
 
     @on(Menu.OptionSelected)
     async def on_menu_option_selected(self, event: Menu.OptionSelected) -> None:

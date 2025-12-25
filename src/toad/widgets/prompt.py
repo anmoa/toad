@@ -449,6 +449,10 @@ class Prompt(containers.VerticalGroup):
             self.query_one(ModeInfo).with_tooltip(tooltip).update(mode.name)
         self.watch_modes(self.modes)
 
+    async def watch_project_path(self) -> None:
+        """Initial refresh of paths."""
+        self.call_later(self.path_search.refresh_paths)
+
     def ask(self, ask: Ask) -> None:
         """Replace the textarea prompt with a menu of options.
 
@@ -493,7 +497,6 @@ class Prompt(containers.VerticalGroup):
     def watch_agent_ready(self, ready: bool) -> None:
         self.set_class(not ready, "-not-ready")
         if ready:
-            # self.prompt_text_area.focus()
             self.query_one(AgentInfo).update(self.agent_info)
 
     def watch_agent_info(self, agent_info: Content) -> None:
@@ -596,6 +599,10 @@ class Prompt(containers.VerticalGroup):
     def watch_show_slash_complete(self, show: bool) -> None:
         self.slash_complete.focus()
 
+    def new_turn(self) -> None:
+        """Called when there is a new turn."""
+        self.path_search.refresh_paths()
+
     @on(PromptTextArea.RequestShellMode)
     def on_request_shell_mode(self, event: PromptTextArea.RequestShellMode):
         self.shell_mode = True
@@ -620,7 +627,7 @@ class Prompt(containers.VerticalGroup):
     def on_invoke_file_search(self, event: InvokeFileSearch) -> None:
         event.stop()
         self.show_path_search = True
-        self.path_search.load_paths()
+        self.path_search.reset()
 
     @on(InvokeSlashComplete)
     def on_invoke_slash_complete(self, event: InvokeSlashComplete) -> None:
