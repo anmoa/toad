@@ -631,8 +631,9 @@ class Prompt(containers.VerticalGroup):
     @on(InvokeFileSearch)
     def on_invoke_file_search(self, event: InvokeFileSearch) -> None:
         event.stop()
-        self.show_path_search = True
-        self.path_search.reset()
+        if not self.shell_mode:
+            self.show_path_search = True
+            self.path_search.reset()
 
     @on(InvokeSlashComplete)
     def on_invoke_slash_complete(self, event: InvokeSlashComplete) -> None:
