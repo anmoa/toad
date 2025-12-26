@@ -160,6 +160,9 @@ class PathSearch(containers.VerticalGroup):
     def focus(self, scroll_visible: bool = False) -> Self:
         return self.input.focus(scroll_visible=scroll_visible)
 
+    def on_descendant_blur(self) -> None:
+        self.post_message(Dismiss(self))
+
     @on(Input.Changed)
     async def on_input_changed(self, event: Input.Changed):
         await self.search(event.value)

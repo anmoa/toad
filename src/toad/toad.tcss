@@ -411,7 +411,7 @@ Prompt {
         }
     }
 
-    #prompt-container {
+    PromptContainer {       
         &:dark {
             background: black 10%;
         }

@@ -71,6 +71,13 @@ class StatusLine(Label):
         self.tooltip = status
 
 
+class PromptContainer(containers.HorizontalGroup):
+    def on_mouse_down(self, event: events.MouseUp) -> None:
+        prompt_text_area = self.query_one(PromptTextArea)
+        if not prompt_text_area.has_focus:
+            prompt_text_area.focus()
+
+
 class PromptTextArea(HighlightedTextArea):
     BINDING_GROUP_TITLE = "Prompt"
 
@@ -334,9 +341,11 @@ class PromptTextArea(HighlightedTextArea):
                 )
                 self.suggestion = self.suggestions[self.suggestions_index]
 
-    def watch_selection(
+    async def watch_selection(
         self, previous_selection: Selection, selection: Selection
     ) -> None:
+        if previous_selection == selection:
+            return
         if selection.start == selection.end:
             previous_y, previous_x = previous_selection.end
             y, x = selection.end
@@ -434,10 +443,6 @@ class Prompt(containers.VerticalGroup):
         self.prompt_text_area.selection = Selection.cursor(
             self.prompt_text_area.get_cursor_line_end_location()
         )
-
-    def on_mouse_up(self) -> None:
-        if not self.has_focus:
-            self.focus()
 
     def watch_current_mode(self, mode: Mode | None) -> None:
         self.set_class(mode is not None, "-has-mode")
@@ -693,7 +698,7 @@ class Prompt(containers.VerticalGroup):
     def compose(self) -> ComposeResult:
         yield PathSearch().data_bind(root=Prompt.project_path)
         yield SlashComplete().data_bind(slash_commands=Prompt.slash_commands)
-        with containers.HorizontalGroup(id="prompt-container"):
+        with PromptContainer(id="prompt-container"):
             yield Question()
             with containers.HorizontalGroup(id="text-prompt"):
                 yield Label(self.PROMPT_AI, id="prompt")
