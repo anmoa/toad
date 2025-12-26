@@ -77,7 +77,7 @@ class ScanJob:
 async def scan(
     root: Path,
     *,
-    max_simultaneous: int = 10,
+    max_simultaneous: int = 5,
     path_filter: PathFilter | None = None,
     add_directories: bool = False,
 ) -> list[Path]:
