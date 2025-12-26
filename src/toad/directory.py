@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from itertools import filterfalse
 from typing import Callable
 from time import time
 from os import PathLike
@@ -31,34 +32,6 @@ class ScanJob:
     def start(self) -> None:
         self._task = asyncio.create_task(self.run())
 
-    async def is_file(self, path: Path) -> bool:
-        """Check if the path references a file.
-
-        Args:
-            path: A path.
-
-        Returns:
-            `True` if the path is a file, `False` if it isn't or an error occured.
-        """
-        try:
-            return await asyncio.to_thread(path.is_file)
-        except OSError:
-            return False
-
-    async def is_dir(self, path: Path) -> bool:
-        """Check if the path references a directory.
-
-        Args:
-            path: A path.
-
-        Returns:
-            `True` if the path is a directory, `False` if it isn't or an error occured.
-        """
-        try:
-            return await asyncio.to_thread(path.is_dir)
-        except OSError:
-            return False
-
     async def run(self) -> None:
         queue = self.queue
         results = self.results
@@ -68,38 +41,37 @@ class ScanJob:
                 scan_path = await queue.get()
             except asyncio.QueueShutDown:
                 break
-            dir_paths, paths = await asyncio.to_thread(
+            paths, dir_paths = await asyncio.to_thread(
                 self._scan_directory, scan_path, self.path_filter
             )
-
             if add_directories:
                 results.extend(dir_paths)
             results.extend(paths)
             for path in dir_paths:
                 await queue.put(path)
 
-            # for path in paths:
-            #     if self.path_filter is not None and self.path_filter.match(path):
-            #         continue
-            #     if await self.is_dir(path):
-            #         if add_directories:
-            #             results.append(path)
-            #         await queue.put(path)
-            #     else:
-            #         results.append(path)
             queue.task_done()
 
     def _scan_directory(
         self, root: Path, path_filter: PathFilter | None = None
     ) -> tuple[list[Path], list[Path]]:
+        """Perform a directory scan (done in a thread).
+
+        Args:
+            root: Path to scan.
+            path_filter: PathFilter object.
+
+        Returns:
+            A tuple of lists of paths (FILES, DIRECTORIES)
+        """
         try:
             paths = list(root.iterdir())
         except IOError:
             paths = []
         if path_filter is not None:
-            paths = [path for path in paths if not path_filter.match(path)]
+            paths = list(filterfalse(path_filter.match, paths))
         paths, dir_paths = partition(Path.is_dir, paths)
-        return dir_paths, paths
+        return paths, dir_paths
 
 
 async def scan(
