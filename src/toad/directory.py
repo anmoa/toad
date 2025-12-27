@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+from itertools import filterfalse
 from typing import Callable
 from time import time
 from os import PathLike
 from pathlib import Path
 
+from textual._partition import partition
 
 from toad.path_filter import PathFilter
 
@@ -30,34 +32,6 @@ class ScanJob:
     def start(self) -> None:
         self._task = asyncio.create_task(self.run())
 
-    async def is_file(self, path: Path) -> bool:
-        """Check if the path references a file.
-
-        Args:
-            path: A path.
-
-        Returns:
-            `True` if the path is a file, `False` if it isn't or an error occured.
-        """
-        try:
-            return await asyncio.to_thread(path.is_file)
-        except OSError:
-            return False
-
-    async def is_dir(self, path: Path) -> bool:
-        """Check if the path references a directory.
-
-        Args:
-            path: A path.
-
-        Returns:
-            `True` if the path is a directory, `False` if it isn't or an error occured.
-        """
-        try:
-            return await asyncio.to_thread(path.is_dir)
-        except OSError:
-            return False
-
     async def run(self) -> None:
         queue = self.queue
         results = self.results
@@ -67,49 +41,62 @@ class ScanJob:
                 scan_path = await queue.get()
             except asyncio.QueueShutDown:
                 break
-            paths = await self._scan(scan_path)
-            for path in paths:
-                if self.path_filter is not None and self.path_filter.match(path):
-                    continue
-                if await self.is_dir(path):
-                    if add_directories:
-                        results.append(path)
+            paths, dir_paths = await asyncio.to_thread(
+                self._scan_directory, scan_path, self.path_filter
+            )
+            if add_directories:
+                results.extend(dir_paths)
+            results.extend(paths)
+            try:
+                for path in dir_paths:
                     await queue.put(path)
-                else:
-                    results.append(path)
+            except asyncio.QueueShutDown:
+                break
             queue.task_done()
 
-    async def _scan(self, root: Path) -> list[Path]:
-        """Get a directory listing.
+    def _scan_directory(
+        self, root: Path, path_filter: PathFilter | None = None
+    ) -> tuple[list[Path], list[Path]]:
+        """Perform a directory scan (done in a thread).
 
         Args:
-            root: Root path.
+            root: Path to scan.
+            path_filter: PathFilter object.
 
         Returns:
-            List of paths within the given directory, or empty list if an error occured.
+            A tuple of lists of paths (FILES, DIRECTORIES)
         """
+        try:
+            paths = list(root.iterdir())
+        except IOError:
+            paths = []
+        if path_filter is not None:
+            paths = list(filterfalse(path_filter.match, paths))
 
-        def get_directory() -> list[Path]:
-            try:
-                return list(root.iterdir())
-            except IOError:
-                return []
-
-        return await asyncio.to_thread(get_directory)
+        try:
+            paths, dir_paths = partition(Path.is_dir, paths)
+        except IOError:
+            paths = []
+            dir_paths = []
+        return paths, dir_paths
 
 
 async def scan(
     root: Path,
     *,
-    max_simultaneous: int = 10,
+    max_simultaneous: int = 5,
     path_filter: PathFilter | None = None,
     add_directories: bool = False,
+    max_duration: float | None = 5.0,
 ) -> list[Path]:
     """Scan a directory for paths.
 
     Args:
         root: Root directory to scan.
         max_simultaneous: Maximum number of scan jobs.
+        path_filter: Path filter object.
+        add_directories: Also collect directories?
+        max_duration: Maximum time in seconds to scan for, or `None` for no maximum.
 
     Returns:
         A list of Paths.
@@ -130,7 +117,14 @@ async def scan(
         await queue.put(root)
         for job in jobs:
             job.start()
-        await queue.join()
+        if max_duration is not None:
+            try:
+                async with asyncio.timeout(max_duration):
+                    await queue.join()
+            except asyncio.TimeoutError:
+                pass
+        else:
+            await queue.join()
     except asyncio.CancelledError:
         await queue.join()
     queue.shutdown(immediate=True)
@@ -211,9 +205,7 @@ class DirectoryScanner:
 
 
 if __name__ == "__main__":
-    # from rich import print
-
-    from textual.fuzzy import Matcher
+    import asyncio
 
     import contextlib
     from time import perf_counter
@@ -225,24 +217,18 @@ if __name__ == "__main__":
         start = perf_counter()
         yield
         elapsed = perf_counter() - start
-        elapsed_ms = elapsed * 1000
-        print(f"{subject} elapsed {elapsed_ms:.4f}ms")
+        elapsed_ms = elapsed
+        print(f"{subject} elapsed {elapsed_ms:.4f}s")
 
-    async def run_scan():
-        paths = await scan(
-            Path("./"),
-        )
-        str_paths = [str(path) for path in paths]
-        matcher = Matcher("psputils")
-        results = []
+    from toad.path_filter import PathFilter
 
-        with timer("fuzzy"):
-            for path in str_paths:
-                score = matcher.match(path)
-                if score > 0:
-                    print(path)
-                results.append((score, path))
+    scan_path = Path("~/projects/textual").expanduser()
 
-        # print(results)
+    path_filter = PathFilter.from_git_root(scan_path)
 
-    asyncio.run(run_scan())
+    async def run():
+        with timer("scan"):
+            return await scan(scan_path, path_filter=path_filter)
+
+    paths = asyncio.run(run())
+    print(len(paths))
