@@ -21,6 +21,7 @@ from textual.actions import SkipAction
 
 from textual.reactive import var, Initialize
 from textual.content import Content, Span
+from textual.strip import Strip
 from textual.widget import Widget
 from textual import widgets
 from textual.widgets import OptionList, Input, DirectoryTree
@@ -77,9 +78,12 @@ class PathFuzzySearch(FuzzySearch):
 
 
 class FuzzyInput(Input):
-    def render_line(self, y: int) -> Strip:
-        from textual.strip import Strip
+    """Adds a Content placeholder to fuzzy input.
 
+    TODO: Add this ability to Textual.
+    """
+
+    def render_line(self, y: int) -> Strip:
         if y == 0 and not self.value:
             placeholder = Content.from_markup(self.placeholder).expand_tabs()
             placeholder = placeholder.stylize(self.visual_style)
