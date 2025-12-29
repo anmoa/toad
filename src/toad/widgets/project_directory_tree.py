@@ -30,9 +30,9 @@ class ProjectDirectoryTree(DirectoryTree):
         classes: str | None = None,
         disabled: bool = False,
     ) -> None:
+        self._path_filter: PathFilter | None = None
         path = Path(path).resolve() if isinstance(path, str) else path.resolve()
         super().__init__(path, name=name, id=id, classes=classes, disabled=disabled)
-        self.path_filter: PathFilter | None = None
 
     async def watch_path(self) -> None:
         """Watch for changes to the `path` of the directory tree.
