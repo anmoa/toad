@@ -94,8 +94,14 @@ class Shell:
             print("TTY FD not set")
             return
 
-        self.terminal = None
-        await asyncio.to_thread(resize_pty, self.master, width, max(height, 1))
+        if self.terminal is not None:
+            self.terminal.finalize()
+            self.terminal = None
+
+        try:
+            await asyncio.to_thread(resize_pty, self.master, width, max(height, 1))
+        except OSError:
+            pass
 
         get_pwd_command = f"{command};" + r'printf "\e]2025;$(pwd);\e\\"' + "\n"
         await self.write(get_pwd_command, hide_echo=True)
@@ -191,7 +197,6 @@ class Shell:
         )
 
         self._ready_event.set()
-        log("Shell started")
 
         if shell_start := self.shell_start.strip():
             shell_start = self.shell_start.strip()
@@ -237,7 +242,6 @@ class Shell:
                     ):
                         self.terminal.display = True
                 new_directory = self.terminal.current_directory
-                print(new_directory, current_directory)
                 if new_directory and new_directory != current_directory:
                     current_directory = new_directory
                     self.conversation.post_message(
@@ -248,7 +252,7 @@ class Shell:
                 and self.terminal.is_finalized
                 and self.terminal.state.scrollback_buffer.is_blank
             ):
-                await self.terminal.remove()
+                self.terminal.finalize()
                 self.terminal = None
 
             if not data:

@@ -888,6 +888,16 @@ class Buffer:
         self.max_line_width = 0
         self.updates = updates
 
+    def remove_last_line(self) -> None:
+        print("REMOVE LINE")
+        if not self.lines:
+            return
+        last_line_index = len(self.lines) - 1
+        del self.lines[-1]
+        del self.folded_lines[self.line_to_fold[last_line_index] :]
+        del self.line_to_fold[last_line_index]
+        self.updates += 1
+
 
 @dataclass
 class DECState:
@@ -1097,6 +1107,19 @@ class TerminalState:
             str: ANSI escape sequences.
         """
         return "\x1b"
+
+    def remove_trailing_blank_lines_from_scrollback(self) -> None:
+        """Remove blank lines at the end of the scrollback buffer.
+
+        A line is considered blank if it is whitespace and has no color or style applied.
+
+        """
+        buffer = self.scrollback_buffer
+        while buffer.lines:
+            last_line_content = buffer.lines[-1].content
+            if last_line_content.spans or last_line_content.plain.rstrip():
+                break
+            buffer.remove_last_line()
 
     def _reflow(self) -> None:
         buffer = self.buffer
