@@ -45,7 +45,6 @@ I'd like Toad to run multiple shells, but there are some compatibility issues I 
 
 You can change the shell in settings. If you have any success, let me know.
 
-
 ## Getting Started
 
 The easiest way to install Toad is by pasting the following in to your terminal:
