@@ -110,7 +110,7 @@ class Cursor(Static):
         if self.query_ancestor(Window).has_focus and self.screen.is_active:
             self.blink = not self.blink
         else:
-            self.blink = True
+            self.blink = False
 
     def watch_follow_widget(self, widget: Widget | None) -> None:
         self.display = widget is not None
