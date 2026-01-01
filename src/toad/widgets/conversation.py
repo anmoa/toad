@@ -105,7 +105,6 @@ class Cursor(Static):
     def on_mount(self) -> None:
         self.display = False
         self.blink_timer = self.set_interval(0.5, self._update_blink, pause=True)
-        self.set_interval(0.4, self._update_follow)
 
     def _update_blink(self) -> None:
         if self.query_ancestor(Window).has_focus and self.screen.is_active:
@@ -116,7 +115,7 @@ class Cursor(Static):
     def watch_follow_widget(self, widget: Widget | None) -> None:
         self.display = widget is not None
 
-    def _update_follow(self) -> None:
+    def update_follow(self) -> None:
         if self.follow_widget and self.follow_widget.is_attached:
             self.styles.height = max(1, self.follow_widget.outer_size.height)
             follow_y = (
@@ -136,7 +135,7 @@ class Cursor(Static):
             self.display = True
             self.blink_timer.reset()
             self.blink_timer.resume()
-            self._update_follow()
+            self.update_follow()
 
 
 class Contents(containers.VerticalGroup, can_focus=False):
@@ -397,7 +396,6 @@ class Conversation(containers.Vertical):
             self._focusable_terminals.remove(event.terminal)
         except ValueError:
             pass
-        self.log(self._focusable_terminals)
         self.prompt.project_directory_updated()
 
     @on(Terminal.AlternateScreenChanged)
@@ -912,7 +910,6 @@ class Conversation(containers.Vertical):
     @on(acp_messages.SetModes)
     async def on_acp_set_modes(self, message: acp_messages.SetModes):
         self.modes = message.modes
-        self.log(self.modes)
         self.current_mode = self.modes[message.current_mode]
 
     @on(messages.HistoryMove)
